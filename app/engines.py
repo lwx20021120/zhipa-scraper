@@ -687,9 +687,16 @@ class Crawl4AIEngine(BaseEngine):
             if names:
                 return [{"name": n, "selector": "", "type": "text"}
                         for n in names]
-        # 默认字段
-        return [{"name": "标题", "selector": "h1, h2, h3", "type": "text"},
-                {"name": "内容", "selector": "p", "type": "text"}]
+        # 默认字段：带封面/简介/链接（小说/书籍/商品类站点常见）
+        return [
+            {"name": "标题", "selector": "h1, h2, h3, .title, dt a", "type": "text"},
+            {"name": "作者", "selector": ".author, [class*=author], dt span:first-child",
+             "type": "text"},
+            {"name": "封面", "selector": ".image img, .cover img, img[src*='/img/']",
+             "type": "image"},
+            {"name": "简介", "selector": "dd, .desc, [class*=desc], p.desc", "type": "text"},
+            {"name": "链接", "selector": "a[href*='_'], a", "type": "attr", "attr": "href"},
+        ]
 
     def _build_schema(self, fields: list) -> dict:
         """把字段列表转成 JsonCssExtractionStrategy 的 schema。
@@ -697,17 +704,21 @@ class Crawl4AIEngine(BaseEngine):
         智能生成：字段名 → 常见 class/标签推断（标题/价格/链接/图片等），
         baseSelector 用多候选（列表容器常见结构）。
         """
-        # 字段名 → 常见 selector 推断
+        # 字段名 → 常见 selector 推断（带笔趣阁等小说站专用 selector）
         FIELD_SELECTOR_HINTS = [
             ("标题", "h2, h3, h4, .title, [class*=title], [class*=name], "
-                    "a[title]"),
+                    "a[title], dt a"),
             ("价格", ".price, .price_color, [class*=price], [class*=cost], "
                     "[class*=amount], [class*=rmb]"),
-            ("链接", "a"),
-            ("图片", "img"),
-            ("封面", "img"),
-            ("作者", ".author, [class*=author], [class*=writer]"),
-            ("内容", "p, .desc, [class*=desc], [class*=content], "
+            ("链接", "a[href*='_'], dt a, a"),
+            ("图片", ".image img, .cover img, img[src*='/img/']"),
+            ("封面", ".image img, .cover img, img[src*='/img/']"),
+            ("作者", "dt span:first-child, .author, [class*=author], "
+                    "[class*=writer]"),
+            ("简介", "dd, .desc, [class*=desc], [class*=intro], "
+                    "[class*=summary]"),
+            ("描述", "dd, .desc, [class*=desc], [class*=intro]"),
+            ("内容", "p, dd, .desc, [class*=desc], [class*=content], "
                     "[class*=intro], [class*=summary]"),
             ("时间", "time, .time, [class*=date], [class*=time]"),
         ]
