@@ -1,0 +1,9 @@
+# 智爬（Scrapling Desktop）依赖清单
+# 安装：D:\python\python.exe -m pip install -r requirements.txt
+scrapling[all]>=0.4.15
+flet>=0.86.5
+openai>=2.0.0
+pandas>=2.0.0
+openpyxl>=3.1.0
+jsonschema>=4.0.0
+pyinstaller>=6.0

@@ -1,0 +1,25 @@
+[      50ms] [INFO] 喜欢看豆瓣的代码，还是发现了什么bug？不如和我们一起为豆瓣添砖加瓦吧！
+http://jobs.douban.com/#position-zsqd @ https://img1.doubanio.com/f/vendors/e258329ca4b2122b4efe53fddc418967441e0e7f/js/douban.js:3213
+[     360ms] [WARNING] [Warning]: dale_movie_homepage_top_large content is empty @ https://img1.doubanio.com/dzRxZWkxOC9mL2FkanMvYzNiMGY1M2M4NGE4NjZiODRjMTdlMThiZGMwZGY2Nzk5YjBjYzBiNy9hZC5yZWxlYXNlLmpz?company_token=kX69T8w1wyOE-dale:1
+[     365ms] [WARNING] [Warning]: dale_movie_homepage_bottom content is empty @ https://img1.doubanio.com/dzRxZWkxOC9mL2FkanMvYzNiMGY1M2M4NGE4NjZiODRjMTdlMThiZGMwZGY2Nzk5YjBjYzBiNy9hZC5yZWxlYXNlLmpz?company_token=kX69T8w1wyOE-dale:1
+[     367ms] [WARNING] An iframe which has both allow-scripts and allow-same-origin for its sandbox attribute can escape its sandboxing. @ https://img1.doubanio.com/dzRxZWkxOC9mL2FkanMvYzNiMGY1M2M4NGE4NjZiODRjMTdlMThiZGMwZGY2Nzk5YjBjYzBiNy9hZC5yZWxlYXNlLmpz?company_token=kX69T8w1wyOE-dale:1
+[     375ms] [WARNING] [Warning]: movie_home_left_bottom content is empty @ https://img1.doubanio.com/dzRxZWkxOC9mL2FkanMvYzNiMGY1M2M4NGE4NjZiODRjMTdlMThiZGMwZGY2Nzk5YjBjYzBiNy9hZC5yZWxlYXNlLmpz?company_token=kX69T8w1wyOE-dale:1
+[    1031ms] [LOG] frame on registerListener @ https://game.weixin.qq.com/cgi-bin/minigame/static/pc-gamesdk-alpha/wxgamesdkframe.html:0
+[    2051ms] [LOG] frame on sync_method {getGameSession: } @ https://game.weixin.qq.com/cgi-bin/minigame/static/pc-gamesdk-alpha/wxgamesdkframe.html:0
+[    2128ms] [LOG] frame on invoke {apiName: getGameSession, args: Object} @ https://game.weixin.qq.com/cgi-bin/minigame/static/pc-gamesdk-alpha/wxgamesdkframe.html:0
+[    2228ms] [WARNING] An iframe which has both allow-scripts and allow-same-origin for its sandbox attribute can escape its sandboxing. @ https://img1.doubanio.com/dzRxZWkxOC9mL2FkanMvYzNiMGY1M2M4NGE4NjZiODRjMTdlMThiZGMwZGY2Nzk5YjBjYzBiNy9hZC5yZWxlYXNlLmpz?company_token=kX69T8w1wyOE-dale:1
+[    2818ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ https://local.info.g9hc4.cn:54360/?callback=uuidjsonpcb2020&t=1788235385941:0
+[    4958ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ https://local.info.g9hc4.cn:51360/?callback=uuidjsonpcb2020&t=1788235387983:0
+[    4959ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ https://localhost.weixin.qq.com:14021/wx_game_base/api/business:0
+[    4959ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ https://localhost.weixin.qq.com:14019/wx_game_base/api/business:0
+[    4960ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ https://localhost.weixin.qq.com:14020/wx_game_base/api/business:0
+[    7001ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ https://localhost.weixin.qq.com:13017/wx_game_base/api/business:0
+[    7017ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ https://localhost.weixin.qq.com:14018/wx_game_base/api/business:0
+[    7017ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ https://localhost.weixin.qq.com:14017/wx_game_base/api/business:0
+[    7017ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ https://localhost.weixin.qq.com:13018/wx_game_base/api/business:0
+[    7017ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ https://localhost.weixin.qq.com:14016/wx_game_base/api/business:0
+[    7018ms] [ERROR] Error: timeout
+    at https://game.weixin.qq.com/cgi-bin/minigame/static/pc-gamesdk-alpha/wxgamesdkframe.html:1:9167
+    at Generator.throw (<anonymous>)
+    at a (https://game.weixin.qq.com/cgi-bin/minigame/static/pc-gamesdk-alpha/wxgamesdkframe.html:1:7941) @ https://game.weixin.qq.com/cgi-bin/minigame/static/pc-gamesdk-alpha/wxgamesdkframe.html:0
+[    7018ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ https://localhost.weixin.qq.com:13016/wx_game_base/api/business:0

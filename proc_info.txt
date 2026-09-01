@@ -1,0 +1,7 @@
+﻿
+ProcessId CommandLine                                                      
+--------- -----------                                                      
+    12272 "D:\python\python.exe"  "D:\python\Scripts\scrapling.exe" install
+    16528 D:\python\python.exe -m playwright install chromium              
+
+

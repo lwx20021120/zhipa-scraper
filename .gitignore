@@ -1,0 +1,26 @@
+# 敏感信息
+config.json
+*.key
+*.keystore
+
+# 浏览器数据/登录态
+.chrome-data/
+.chrome-*/
+.last_result.json
+
+# Python 缓存
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# 环境/备份
+pip_backup*.txt
+.env
+
+# 临时文件
+*.tmp
+.DS_Store
+Thumbs.db
+
+# 第三方参考源码（大体积，不进库）
+third_party/

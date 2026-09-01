@@ -1,0 +1,222 @@
+[
+  {
+    "time": "09-01 12:04",
+    "ai_input": "爬取豆瓣电影榜单前50个电影名称图片评分",
+    "url": "https://movie.douban.com/",
+    "fetcher": "auto",
+    "fields": [],
+    "rows_count": 1,
+    "used_fetcher": "crawl4ai"
+  },
+  {
+    "time": "09-01 12:03",
+    "ai_input": "爬取豆瓣电影前50个电影名称图片评分",
+    "url": "https://movie.douban.com/",
+    "fetcher": "auto",
+    "fields": [],
+    "rows_count": 1,
+    "used_fetcher": "crawl4ai"
+  },
+  {
+    "time": "09-01 11:45",
+    "ai_input": "爬取这个网站的所有分类页面，提取书籍标题和价格",
+    "url": "https://books.toscrape.com/",
+    "fetcher": "auto",
+    "fields": [],
+    "pagination": {
+      "mode": "deep",
+      "max_pages": 2
+    },
+    "rows_count": 486,
+    "used_fetcher": "crawl4ai"
+  },
+  {
+    "time": "09-01 11:44",
+    "ai_input": "提取页面上所有书籍的标题、价格和链接",
+    "url": "https://books.toscrape.com/",
+    "fetcher": "auto",
+    "fields": [],
+    "rows_count": 20,
+    "used_fetcher": "crawl4ai"
+  },
+  {
+    "time": "09-01 11:44",
+    "ai_input": "爬取这个网站的所有分类页面，提取书籍标题和价格",
+    "url": "https://books.toscrape.com/",
+    "fetcher": "auto",
+    "fields": [],
+    "pagination": {
+      "mode": "deep",
+      "max_pages": 2
+    },
+    "rows_count": 486,
+    "used_fetcher": "crawl4ai"
+  },
+  {
+    "time": "09-01 11:43",
+    "ai_input": "提取页面上所有书籍的标题、价格和链接",
+    "url": "https://books.toscrape.com/",
+    "fetcher": "auto",
+    "fields": [],
+    "rows_count": 20,
+    "used_fetcher": "crawl4ai"
+  },
+  {
+    "time": "09-01 11:42",
+    "ai_input": "",
+    "url": "http://x.com",
+    "fetcher": "static",
+    "fields": [
+      {
+        "name": "标题",
+        "selector": "h3"
+      }
+    ],
+    "rows_count": 0,
+    "used_fetcher": "static"
+  },
+  {
+    "time": "09-01 11:42",
+    "ai_input": "",
+    "url": "http://x.com",
+    "fetcher": "static",
+    "fields": [
+      {
+        "name": "标题",
+        "selector": "h3"
+      }
+    ],
+    "rows_count": 0,
+    "used_fetcher": "static"
+  },
+  {
+    "time": "09-01 11:37",
+    "ai_input": "",
+    "url": "http://x.com",
+    "fetcher": "static",
+    "fields": [
+      {
+        "name": "标题",
+        "selector": "h3"
+      }
+    ],
+    "rows_count": 0,
+    "used_fetcher": "static"
+  },
+  {
+    "time": "09-01 11:11",
+    "ai_input": "",
+    "url": "http://x.com",
+    "fetcher": "static",
+    "fields": [
+      {
+        "name": "标题",
+        "selector": "h3"
+      }
+    ],
+    "rows_count": 0,
+    "used_fetcher": "static"
+  },
+  {
+    "time": "09-01 11:09",
+    "ai_input": "",
+    "url": "http://x.com",
+    "fetcher": "static",
+    "fields": [
+      {
+        "name": "标题",
+        "selector": "h3"
+      }
+    ],
+    "rows_count": 0,
+    "used_fetcher": "static"
+  },
+  {
+    "time": "09-01 10:46",
+    "ai_input": "",
+    "url": "http://x.com",
+    "fetcher": "static",
+    "fields": [
+      {
+        "name": "标题",
+        "selector": "h3"
+      }
+    ],
+    "rows_count": 0,
+    "used_fetcher": "static"
+  },
+  {
+    "time": "09-01 10:46",
+    "ai_input": "",
+    "url": "http://x.com",
+    "fetcher": "static",
+    "fields": [
+      {
+        "name": "标题",
+        "selector": "h3"
+      }
+    ],
+    "rows_count": 0,
+    "used_fetcher": "static"
+  },
+  {
+    "time": "09-01 10:46",
+    "ai_input": "",
+    "url": "http://x.com",
+    "fetcher": "static",
+    "fields": [
+      {
+        "name": "标题",
+        "selector": "h3"
+      }
+    ],
+    "rows_count": 0,
+    "used_fetcher": "static"
+  },
+  {
+    "time": "09-01 10:45",
+    "ai_input": "爬取https://www.biquga.com/list/0/1.html这个网站里，前六个带图片的小说的小说名和图片，以及相应链接",
+    "url": "https://www.biquga.com/list/0/1.html",
+    "fetcher": "auto",
+    "fields": [],
+    "rows_count": 6,
+    "used_fetcher": "直提"
+  },
+  {
+    "time": "08-31 22:48",
+    "ai_input": "爬取https://www.biquga.com/list/0/1.html这个网站里，前六个带图片的小说的小说名和图片，以及相应链接",
+    "url": "https://www.biquga.com/list/0/1.html",
+    "fetcher": "auto",
+    "fields": [],
+    "rows_count": 6,
+    "used_fetcher": "直提"
+  },
+  {
+    "time": "08-31 22:41",
+    "ai_input": "爬取豆瓣电影榜单top50，电影名，评分，链接",
+    "url": "",
+    "fetcher": "auto",
+    "fields": [
+      {
+        "name": "电影名",
+        "selector": "ol.grid_view .item .hd .title",
+        "type": "text",
+        "attr": ""
+      },
+      {
+        "name": "评分",
+        "selector": "ol.grid_view .item .star .rating_num",
+        "type": "text",
+        "attr": ""
+      },
+      {
+        "name": "链接",
+        "selector": "ol.grid_view .item .hd a",
+        "type": "attr",
+        "attr": "href"
+      }
+    ],
+    "rows_count": 50,
+    "used_fetcher": "static"
+  }
+]
