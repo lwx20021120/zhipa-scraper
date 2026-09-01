@@ -1,5 +1,27 @@
 [
   {
+    "time": "09-01 12:44",
+    "ai_input": "爬取这个网站的所有分类页面，提取书籍标题和价格",
+    "url": "https://books.toscrape.com/",
+    "fetcher": "auto",
+    "fields": [],
+    "pagination": {
+      "mode": "deep",
+      "max_pages": 2
+    },
+    "rows_count": 486,
+    "used_fetcher": "crawl4ai"
+  },
+  {
+    "time": "09-01 12:43",
+    "ai_input": "提取页面上所有书籍的标题、价格和链接",
+    "url": "https://books.toscrape.com/",
+    "fetcher": "auto",
+    "fields": [],
+    "rows_count": 20,
+    "used_fetcher": "crawl4ai"
+  },
+  {
     "time": "09-01 12:04",
     "ai_input": "爬取豆瓣电影榜单前50个电影名称图片评分",
     "url": "https://movie.douban.com/",

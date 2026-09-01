@@ -27,6 +27,8 @@ import traceback
 from dataclasses import dataclass, field
 
 from .scraper import ScrapeError
+# 模块级导入便于测试时 patch（融合引擎核心 AI 调用）
+from .llm import _call_llm, _parse_json
 
 # ---------- 能力声明 ----------
 
@@ -319,6 +321,161 @@ class ScenarioAnalyzer:
         return prof
 
 
+# ---------- LLM 场景分析器（融合引擎泛化方案 A 核心） ----------
+
+# LLM 输出的场景画像 schema（也是给 LLM 的指令）
+_LLM_PROMPT = """你是网页爬取规划专家。请分析用户的爬取指令和目标 URL，输出**结构化的抓取方案 JSON**。
+
+可用引擎及其能力：
+- scrapling: 静态/动态 CSS 选择器提取（快，秒级；需要登录/反爬时容易失败）
+- direct: AI 从页面文本提取（无需 selector，适合非结构化页面）
+- agent: 自研 AI 浏览器，操作真实 Chromium，能处理登录/翻页/反爬（慢）
+- crawl4ai: 整站多页深爬（BFS），适合"整站/全站"类指令
+- browser-use: 官方 Agent，用 pydantic schema 校验（与某些 LLM 不兼容）
+
+输入：
+- 指令: {user_input}
+- URL: {url}
+- 页面片段（前 600 字）: {probe_text}
+
+请输出**严格 JSON**（不要 Markdown 包裹、不要任何额外说明）：
+{{
+  "scenario": "static_page | dynamic_page | login_page | deep_crawl | antibot_page | api_only",
+  "primary_engine": "scrapling | direct | agent | crawl4ai | browser-use",
+  "fallback_engines": ["..."],
+  "mode": "race | pipeline | enhance",
+  "needs_login": bool,
+  "needs_pagination": bool,
+  "needs_deep_crawl": bool,
+  "fields": [{{"name": "字段名（中文）", "type": "text | attr | image", "selector": "可选"}}],
+  "reasoning": "为什么这样选（30 字内）",
+  "confidence": 0-1
+}}
+
+判断指引：
+- "提取/爬取某个固定URL 的列表" → static/dynamic_page，单页优先 scrapling
+- "翻 N页" → 需 needs_pagination=true，仍是单站
+- "整站/全站/所有页面/所有分类/所有链接" → deep_crawl，crawl4ai 优先
+- "需要登录/登录后" → login_page，agent 优先（弹窗登录）
+- "提取接口 JSON" → api_only，agent 优先（监听 Network）
+- "动态加载/spa/infinite scroll" → dynamic_page
+- "反爬/验证码/人机" → antibot_page，agent/browser-use 优先
+- "scrapling" 适合简单列表，"agent" 适合有交互的复杂页面
+- 拿不准就用 "race"，让多个引擎并行跑，质量最高的赢
+
+字段解析：用户说"提取X和Y的Z" → fields=[X, Y, Z]（用中文）；用户说"标题、价格、链接"就照搬。
+"""
+
+
+def _llm_analyze_sync(user_input, url, probe_text, api_key, hint):
+    """调 LLM 分析场景，返回 ScenarioProfile（LLM 失败抛异常）。"""
+    prompt = _LLM_PROMPT.format(
+        user_input=user_input or "",
+        url=url or "",
+        probe_text=(probe_text or "")[:600],
+    )
+    raw = _call_llm([
+        {"role": "system",
+         "content": "你是网页爬取规划专家，输出严格 JSON，不要任何额外说明。"},
+        {"role": "user", "content": prompt},
+    ], api_key)
+    parsed = _parse_json(raw)
+    if not isinstance(parsed, dict):
+        raise ValueError(f"LLM 输出无法解析：{raw[:120]}")
+
+    # 转换为 ScenarioProfile（兼容现有 PlanBuilder）
+    scenario_map = {
+        "static_page": SCENARIO_STATIC,
+        "dynamic_page": SCENARIO_DYNAMIC,
+        "antibot_page": SCENARIO_ANTIBOT,
+        "login_page": SCENARIO_LOGIN,
+        "deep_crawl": SCENARIO_DEEP,
+        "api_only": SCENARIO_JSON,
+    }
+    scenario = scenario_map.get(parsed.get("scenario", ""), hint.scenario)
+    needs_login = bool(parsed.get("needs_login", False))
+    needs_pagination = bool(parsed.get("needs_pagination", False))
+    needs_deep = bool(parsed.get("needs_deep_crawl",
+                          scenario == SCENARIO_DEEP))
+    # 字段信息
+    fields = parsed.get("fields") or []
+    if fields:
+        hint.fields_hint = [
+            {"name": f.get("name", "字段"),
+             "selector": f.get("selector", ""),
+             "type": f.get("type", "text"),
+             "attr": (f.get("attribute", "") if f.get("type") == "attr"
+                      else "")}
+            for f in fields if isinstance(f, dict) and f.get("name")
+        ]
+    return ScenarioProfile(
+        scenario=scenario,
+        needs_login=needs_login,
+        is_deep=needs_deep,
+        likely_dynamic=scenario == SCENARIO_DYNAMIC,
+        likely_antibot=scenario == SCENARIO_ANTIBOT,
+        has_api_signal=scenario == SCENARIO_JSON,
+        fields_hint=hint.fields_hint,
+        confidence=float(parsed.get("confidence", 0.6)),
+        reasons=[parsed.get("reasoning", "LLM 推理")] +
+                  ([f"LLM 提示: {parsed['key']}"] if parsed.get("key") else []),
+    )
+
+
+class LLMScenarioAnalyzer:
+    """LLM 场景分析器：真正泛化（不依赖固定关键词）。
+
+    工作流程：
+    1. 关键词快速预判（<10ms）→ 给 LLM 作 hint
+    2. 无 API key → 直接返回关键词结果（降级）
+    3. 有 API key → 调 LLM 推理（DeepSeek/OpenAI/任意兼容 OpenAI 的）
+    4. LLM 失败 → 降级到关键词结果（用户体验无感）
+
+    输出与 ScenarioAnalyzer 完全一致：ScenarioProfile。
+    """
+
+    def __init__(self, api_key: str = ""):
+        self.api_key = api_key
+        self._fallback = ScenarioAnalyzer()
+
+    def analyze(self, user_input, url="", proxy="",
+                progress=None) -> ScenarioProfile:
+        # 1. 关键词预判（hint）
+        try:
+            hint = self._fallback.analyze(user_input, url, proxy, progress)
+        except Exception:
+            hint = ScenarioProfile()
+
+        # 2. 无 API key → 直接返回关键词
+        if not self.api_key:
+            return hint
+
+        # 3. 有 API key → 调 LLM 推理
+        # 先做轻量探针（让 LLM 看到真实页面片段，决策更准）
+        probe_text = ""
+        if url:
+            try:
+                probe_text = _probe_page(url, proxy)
+            except Exception:
+                pass
+        try:
+            if progress:
+                progress("🤖 LLM 场景分析：让 AI 理解指令+URL+页面…")
+            prof = _llm_analyze_sync(user_input, url, probe_text,
+                                     self.api_key, hint)
+            if progress:
+                progress(f"🤖 LLM 场景：{prof.scenario}（{prof.reasons[0]}）"
+                         if prof.reasons else
+                         f"🤖 LLM 场景：{prof.scenario}")
+            return prof
+        except Exception as e:
+            # 4. LLM 失败 → 降级到关键词（不阻塞用户）
+            if progress:
+                progress(f"⚠️ LLM 场景分析失败，用规则兜底：{type(e).__name__}: "
+                         f"{str(e)[:80]}")
+            return hint
+
+
 # ---------- 执行计划 ----------
 
 def _engines_by_cap(cap: str) -> list:
@@ -566,6 +723,13 @@ class UnifiedEngine:
             raise ScrapeError("融合引擎需要目标网址")
 
         # 1. 场景分析
+        # 优先 LLM（真正泛化），无 API key 或 LLM 失败时降级到关键词规则
+        from .llm import _get_api_key
+        api_key = _get_api_key(api_key)
+        if api_key and not isinstance(self.analyzer, LLMScenarioAnalyzer):
+            self.analyzer = LLMScenarioAnalyzer(api_key=api_key)
+        elif not api_key and not isinstance(self.analyzer, ScenarioAnalyzer):
+            self.analyzer = ScenarioAnalyzer()
         self._report(progress, "🧠 融合引擎：分析场景…")
         prof = self.analyzer.analyze(user_input, url, proxy, progress)
         self._report(progress,

@@ -1,0 +1,152 @@
+# -*- coding: utf-8 -*-
+"""融合引擎泛化方案 A 测试：LLM 场景分析器。
+
+场景：
+1. 无 API key → 降级到关键词（仍是原体验）
+2. 有 API key 但余额不足 → LLM 失败降级到关键词（用户无感）
+3. mock LLM 返回结构化 JSON → LLM 场景分析生效（泛化能力）
+4. mock LLM 返回非 JSON → 降级
+5. LLM 输出的 fields 传入 PlanBuilder 能正确解析
+"""
+import sys
+from unittest.mock import patch
+
+sys.path.insert(0, r"D:\workbuudy\Scrapling")
+
+
+def test_no_api_key():
+    """无 API key：直接走关键词分析。"""
+    from app.unified_engine import LLMScenarioAnalyzer, ScenarioProfile
+    a = LLMScenarioAnalyzer(api_key="")
+    p = a.analyze("提取书籍标题价格",
+                  url="https://books.toscrape.com/",
+                  progress=lambda m: None)
+    assert isinstance(p, ScenarioProfile), "必须返回 ScenarioProfile"
+    assert p.scenario in ("static_page", "dynamic_page")
+    print(f"  ✅ 无API: {p.scenario}（置信度 {p.confidence}）")
+    return True
+
+
+def test_llm_402_falls_back():
+    """DeepSeek 余额不足：LLM 失败应降级到关键词，不阻塞。"""
+    from app.unified_engine import LLMScenarioAnalyzer
+
+    def fake_call_llm(messages, api_key, retries=3):
+        raise RuntimeError("Insufficient Balance (402)")
+
+    # unified_engine 模块顶部 import 了 _call_llm，patch 模块级的引用
+    with patch("app.unified_engine._call_llm", fake_call_llm):
+        a = LLMScenarioAnalyzer(api_key="sk-fake-with-402")
+        p = a.analyze("提取豆瓣电影Top250的标题评分链接",
+                      url="https://movie.douban.com/top250",
+                      progress=lambda m: None)
+    assert p.scenario, "降级后仍应有场景画像"
+    print(f"  ✅ LLM失败降级: {p.scenario}（原因: {p.reasons[0] if p.reasons else ''}）")
+    return True
+
+
+def test_llm_success():
+    """mock LLM 返回正确 JSON → 场景分析生效，泛化能力。"""
+    from app.unified_engine import LLMScenarioAnalyzer
+
+    llm_response = """{"scenario": "dynamic_page",
+"primary_engine": "scrapling",
+"fallback_engines": ["direct", "agent"],
+"mode": "race",
+"needs_login": false,
+"needs_pagination": true,
+"needs_deep_crawl": false,
+"fields": [
+  {"name": "标题", "type": "text"},
+  {"name": "评分", "type": "text"},
+  {"name": "链接", "type": "attr", "attribute": "href"}
+],
+"reasoning": "用户要 Top250 列表含分页，普通分页列表",
+"confidence": 0.88}"""
+
+    def fake_call_llm(messages, api_key, retries=3):
+        return llm_response
+
+    with patch("app.unified_engine._call_llm", fake_call_llm):
+        a = LLMScenarioAnalyzer(api_key="sk-fake-but-works")
+        p = a.analyze("提取豆瓣电影Top250的标题评分链接",
+                      url="https://movie.douban.com/top250",
+                      progress=lambda m: None)
+    assert p.scenario == "dynamic_page", f"应识别 dynamic_page，实际 {p.scenario}"
+    assert len(p.fields_hint) == 3, f"应有 3 个字段，实际 {len(p.fields_hint)}"
+    assert p.confidence == 0.88
+    # 验证 LLM 解析的字段结构
+    assert p.fields_hint[0]["name"] == "标题"
+    assert p.fields_hint[1]["name"] == "评分"
+    assert p.fields_hint[2]["type"] == "attr"
+    print(f"  ✅ LLM成功: {p.scenario}, 字段={[f['name'] for f in p.fields_hint]}, "
+          f"置信度={p.confidence}")
+    return True
+
+
+def test_llm_invalid_json_falls_back():
+    """LLM 返回非 JSON（如被截断） → 降级到关键词。"""
+    from app.unified_engine import LLMScenarioAnalyzer
+
+    def fake_call_llm(messages, api_key, retries=3):
+        return "抱歉，AI 思考中断...（非 JSON）"
+
+    with patch("app.unified_engine._call_llm", fake_call_llm):
+        a = LLMScenarioAnalyzer(api_key="sk-fake")
+        p = a.analyze("爬取所有分类页面",
+                      url="https://books.toscrape.com/",
+                      progress=lambda m: None)
+    assert p.scenario, "降级后仍有场景画像"
+    print(f"  ✅ LLM非JSON降级: {p.scenario}")
+    return True
+
+
+def test_llm_response_to_eng_runs():
+    """端到端——LLM 分析 + 实际抓取 books 站。"""
+    from app.unified_engine import LLMScenarioAnalyzer, UnifiedEngine
+
+    llm_response = """{"scenario": "static_page",
+"primary_engine": "scrapling",
+"fallback_engines": ["crawl4ai"],
+"mode": "race",
+"needs_login": false,
+"needs_pagination": false,
+"needs_deep_crawl": false,
+"fields": [{"name": "标题", "type": "attr", "attribute": "title"},
+           {"name": "价格", "type": "text"}],
+"reasoning": "简单列表",
+"confidence": 0.9}"""
+
+    def fake_call_llm(messages, api_key, retries=3):
+        return llm_response
+
+    with patch("app.unified_engine._call_llm", fake_call_llm):
+        eng = UnifiedEngine(headless=True)
+        import threading
+        result = {}
+        def worker():
+            try:
+                r = eng.run("提取书籍标题价格",
+                            url="https://books.toscrape.com/",
+                            api_key="sk-fake", progress=lambda m: None)
+                result["ok"] = r
+            except Exception as e:
+                import traceback; result["err"] = traceback.format_exc()
+        t = threading.Thread(target=worker); t.start(); t.join(timeout=300)
+        if "ok" in result:
+            print(f"  ✅ LLM+真实抓取: {len(result['ok'].rows)} 行")
+            return len(result["ok"].rows) >= 15
+        else:
+            print(f"  ❌ {result.get('err','')[:400]}")
+            return False
+
+
+if __name__ == "__main__":
+    print("=== 融合引擎泛化方案 A 测试 ===")
+    ok = all([test_no_api_key(),
+              test_llm_402_falls_back(),
+              test_llm_success(),
+              test_llm_invalid_json_falls_back(),
+              test_llm_response_to_eng_runs()])
+    print("\n结论:", "✅ 全部通过" if ok else "❌ 有失败")
+    sys.exit(0 if ok else 1)

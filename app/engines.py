@@ -291,6 +291,12 @@ class BrowserUseEngine(BaseEngine):
         )
 
         def _make_llm():
+            # ⚠️ browser-use Agent 内部可能从环境变量 OPENAI_API_KEY 读 key，
+            # 保险起见也设上（与 litellm 同问题）。langchain-openai 的
+            # ChatOpenAI(api_key=key) 显式传参应优先于环境变量。
+            import os
+            os.environ["OPENAI_API_KEY"] = key
+            os.environ["DEEPSEEK_API_KEY"] = key
             # browser-use 0.13 读取 llm.provider / llm.model（langchain-openai
             # 某些版本没有），给类补上类属性
             for attr, val in (("provider", "deepseek"), ("model", None)):
@@ -503,8 +509,14 @@ class Crawl4AIEngine(BaseEngine):
                 # （等价于 AI 打开开发者工具看源代码找字段，一次成本换可复用）
                 try:
                     from .llm import _get_api_key
+                    import os
                     key = _get_api_key(api_key)
                     if key:
+                        # ⚠️ 关键：litellm 默认从环境变量 DEEPSEEK_API_KEY 读 key，
+                        # 忽略 LLMConfig.api_token！必须显式设置环境变量，
+                        # 否则会用旧/空的 key 导致 402 Insufficient Balance。
+                        os.environ["DEEPSEEK_API_KEY"] = key
+                        os.environ["OPENAI_API_KEY"] = key
                         from crawl4ai import LLMConfig
                         llm_config = LLMConfig(
                             provider="deepseek/deepseek-chat",
