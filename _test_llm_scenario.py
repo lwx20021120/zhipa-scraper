@@ -72,15 +72,18 @@ def test_llm_success():
         p = a.analyze("提取豆瓣电影Top250的标题评分链接",
                       url="https://movie.douban.com/top250",
                       progress=lambda m: None)
-    assert p.scenario == "dynamic_page", f"应识别 dynamic_page，实际 {p.scenario}"
+    # 修复后：needs_pagination=true 会被升级到 deep_crawl（不再被 race 抢跑覆盖）
+    assert p.scenario == "deep_crawl", (
+        f"needs_pagination=true 应升级到 deep_crawl，实际 {p.scenario}")
+    assert p.is_deep, "needs_pagination 触发后应 is_deep=True"
     assert len(p.fields_hint) == 3, f"应有 3 个字段，实际 {len(p.fields_hint)}"
     assert p.confidence == 0.88
     # 验证 LLM 解析的字段结构
     assert p.fields_hint[0]["name"] == "标题"
     assert p.fields_hint[1]["name"] == "评分"
     assert p.fields_hint[2]["type"] == "attr"
-    print(f"  ✅ LLM成功: {p.scenario}, 字段={[f['name'] for f in p.fields_hint]}, "
-          f"置信度={p.confidence}")
+    print(f"  ✅ LLM成功: {p.scenario}（needs_pagination 升级到 deep_crawl）, "
+          f"字段={[f['name'] for f in p.fields_hint]}, 置信度={p.confidence}")
     return True
 
 
@@ -121,24 +124,28 @@ def test_llm_response_to_eng_runs():
         return llm_response
 
     with patch("app.unified_engine._call_llm", fake_call_llm):
-        eng = UnifiedEngine(headless=True)
-        import threading
-        result = {}
-        def worker():
-            try:
-                r = eng.run("提取书籍标题价格",
-                            url="https://books.toscrape.com/",
-                            api_key="sk-fake", progress=lambda m: None)
-                result["ok"] = r
-            except Exception as e:
-                import traceback; result["err"] = traceback.format_exc()
-        t = threading.Thread(target=worker); t.start(); t.join(timeout=300)
-        if "ok" in result:
-            print(f"  ✅ LLM+真实抓取: {len(result['ok'].rows)} 行")
-            return len(result["ok"].rows) >= 15
-        else:
-            print(f"  ❌ {result.get('err','')[:400]}")
-            return False
+        # 真实跑 UnifiedEngine 会触发 Crawl4AI 网络抓取（依赖真实 API + 网络）
+        # 改为 mock 所有引擎的 run 方法，只测 LLM 决策→Plan→Arbiter 完整链路
+        from app.engines import EngineResult
+        fake_rows = [
+            {"标题": f"书{i}", "价格": f"£{i}.0"} for i in range(20)
+        ]
+        fake_result = EngineResult(
+            rows=fake_rows, status=0, used_fetcher="scrapling", engine="scrapling",
+            attempts=1, config={"fields": [{"name": "标题"}, {"name": "价格"}]})
+        with patch("app.engines.ScraplingEngine.run",
+                   return_value=fake_result), \
+             patch("app.engines.Crawl4AIEngine.run",
+                   return_value=fake_result), \
+             patch("app.engines.DirectExtractEngine.run",
+                   return_value=fake_result):
+            eng = UnifiedEngine(headless=True)
+            r = eng.run("提取书籍标题价格",
+                        url="https://books.toscrape.com/",
+                        api_key="sk-fake", progress=lambda m: None)
+        assert len(r.rows) >= 15, f"应至少 15 行，实际 {len(r.rows)}"
+        print(f"  ✅ LLM决策+Arbiter完整链路: {len(r.rows)} 行（mock引擎避免依赖真实网络）")
+        return True
 
 
 if __name__ == "__main__":

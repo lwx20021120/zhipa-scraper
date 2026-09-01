@@ -163,3 +163,23 @@
 [ 7293739ms] [LOG] WebSocketChannelException: WebSocketException: Failed to connect WebSocket @ http://localhost:8550/main.dart.mjs:80
 [ 7293739ms] [LOG]  @ http://localhost:8550/main.dart.mjs:80
 [ 7293739ms] Exception
+[ 8280431ms] [ERROR] WebSocket connection to 'ws://localhost:8550/ws' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:8550/main.dart.mjs:950
+[ 8280431ms] [LOG] WebSocketChannelException: WebSocketException: Failed to connect WebSocket @ http://localhost:8550/main.dart.mjs:80
+[ 8280431ms] [LOG]  @ http://localhost:8550/main.dart.mjs:80
+[ 8280432ms] Exception
+[ 8283306ms] [ERROR] WebSocket connection to 'ws://localhost:8550/ws' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:8550/main.dart.mjs:950
+[ 8283306ms] [LOG] WebSocketChannelException: WebSocketException: Failed to connect WebSocket @ http://localhost:8550/main.dart.mjs:80
+[ 8283306ms] [LOG]  @ http://localhost:8550/main.dart.mjs:80
+[ 8283306ms] Exception
+[ 8286189ms] [ERROR] WebSocket connection to 'ws://localhost:8550/ws' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:8550/main.dart.mjs:950
+[ 8286189ms] [LOG] WebSocketChannelException: WebSocketException: Failed to connect WebSocket @ http://localhost:8550/main.dart.mjs:80
+[ 8286189ms] [LOG]  @ http://localhost:8550/main.dart.mjs:80
+[ 8286193ms] Exception
+[ 8289070ms] [ERROR] WebSocket connection to 'ws://localhost:8550/ws' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:8550/main.dart.mjs:950
+[ 8289070ms] [LOG] WebSocketChannelException: WebSocketException: Failed to connect WebSocket @ http://localhost:8550/main.dart.mjs:80
+[ 8289070ms] [LOG]  @ http://localhost:8550/main.dart.mjs:80
+[ 8289071ms] Exception
+[ 8291927ms] [ERROR] WebSocket connection to 'ws://localhost:8550/ws' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:8550/main.dart.mjs:950
+[ 8291928ms] [LOG] WebSocketChannelException: WebSocketException: Failed to connect WebSocket @ http://localhost:8550/main.dart.mjs:80
+[ 8291928ms] [LOG]  @ http://localhost:8550/main.dart.mjs:80
+[ 8291929ms] Exception

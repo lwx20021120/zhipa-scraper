@@ -705,11 +705,20 @@ class Crawl4AIEngine(BaseEngine):
                     "[class*=amount], [class*=rmb]"),
             ("链接", "a"),
             ("图片", "img"),
+            ("封面", "img"),
             ("作者", ".author, [class*=author], [class*=writer]"),
             ("内容", "p, .desc, [class*=desc], [class*=content], "
                     "[class*=intro], [class*=summary]"),
             ("时间", "time, .time, [class*=date], [class*=time]"),
         ]
+        # 字段名 → 类型推断（关键：封面类→image，链接类→attr）
+        def _infer_type(name, default="text"):
+            n = name or ""
+            if any(k in n for k in ("封面", "图片", "img", "image", "cover", "缩略图", "海报")):
+                return "image"
+            if any(k in n for k in ("链接", "网址", "url", "URL", "地址", "href")):
+                return "attr"
+            return default
         schema_fields = []
         for f in fields:
             name = f.get("name", "字段")
@@ -720,7 +729,8 @@ class Crawl4AIEngine(BaseEngine):
                     if kw in name:
                         sel = hint
                         break
-            ftype = f.get("type", "text")
+            # 智能类型推断（如果用户没显式指定 type）
+            ftype = f.get("type") or _infer_type(name)
             schema_fields.append({
                 "name": name,
                 "selector": sel,
@@ -774,7 +784,7 @@ class Crawl4AIEngine(BaseEngine):
         field_names = [f.get("name", "字段") for f in (fields or [])] \
                       or ["书名", "作者", "链接"]
         # 映射到 selector 提示：笔趣阁等小说站结构：<dt><span>作者</span>
-        # <a>书名</a></dt>，分页/详情链接是 <a href*='_'>
+        # <a>书名</a></dt>，分页/详情链接是 <a href*='_'>，封面是 .image img
         FIELD_SELECTORS = {
             "标题": "dt a, h3 a, .title a, a[href*='_']",
             "书名": "dt a, h3 a, .title a, a[href*='_']",
@@ -788,13 +798,33 @@ class Crawl4AIEngine(BaseEngine):
             "小说链接": "a[href*='_']",
             "URL": "a[href*='_']",
             "url": "a[href*='_']",
+            "封面": ".image img, img",
+            "图片": ".image img, img",
+            "最新章节": ".chapter, dd, .lastest, [class*=chapter] a",
         }
+
+        def _infer_type(name):
+            """根据字段名推断 Crawl4AI 字段类型。"""
+            n = name or ""
+            if any(k in n for k in ("封面", "图片", "img", "image",
+                                   "cover", "缩略图", "海报", "插图")):
+                return ("image", "src")
+            if any(k in n for k in ("链接", "网址", "url", "URL",
+                                   "地址", "href")):
+                return ("attribute", "href")
+            return ("text", None)
+
         schema_fields = []
         for name in field_names:
-            if "链接" in name or "url" in name.lower() or "URL" == name:
+            ftype, attr = _infer_type(name)
+            if ftype == "image":
+                schema_fields.append({
+                    "name": name, "selector": "img",
+                    "type": "image", "attribute": attr})
+            elif ftype == "attribute":
                 schema_fields.append({
                     "name": name, "selector": "a[href*='_']",
-                    "type": "attribute", "attribute": "href"})
+                    "type": "attribute", "attribute": attr})
             else:
                 sel = FIELD_SELECTORS.get(name, "dt a, h3 a, a")
                 schema_fields.append({

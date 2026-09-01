@@ -1,5 +1,32 @@
 [
   {
+    "time": "09-01 13:44",
+    "ai_input": "",
+    "url": "http://x.com",
+    "fetcher": "static",
+    "fields": [
+      {
+        "name": "标题",
+        "selector": "h3"
+      }
+    ],
+    "rows_count": 0,
+    "used_fetcher": "static"
+  },
+  {
+    "time": "09-01 13:44",
+    "ai_input": "爬取这个网站前十页的小说的小说名，作者名称，小说链接，并进去该小说标签页爬取封面和最新章节的标题",
+    "url": "https://www.biquga.com/",
+    "fetcher": "auto",
+    "fields": [],
+    "pagination": {
+      "mode": "deep",
+      "max_pages": 10
+    },
+    "rows_count": 362,
+    "used_fetcher": "crawl4ai"
+  },
+  {
     "time": "09-01 13:23",
     "ai_input": "爬取这个网站前十页的小说的小说名，作者名称，小说链接，并进去该小说标签页爬取封面和最新章节的标题",
     "url": "https://www.biquga.com/",
@@ -312,34 +339,6 @@
   },
   {
     "time": "09-01 11:11",
-    "ai_input": "",
-    "url": "http://x.com",
-    "fetcher": "static",
-    "fields": [
-      {
-        "name": "标题",
-        "selector": "h3"
-      }
-    ],
-    "rows_count": 0,
-    "used_fetcher": "static"
-  },
-  {
-    "time": "09-01 11:09",
-    "ai_input": "",
-    "url": "http://x.com",
-    "fetcher": "static",
-    "fields": [
-      {
-        "name": "标题",
-        "selector": "h3"
-      }
-    ],
-    "rows_count": 0,
-    "used_fetcher": "static"
-  },
-  {
-    "time": "09-01 10:46",
     "ai_input": "",
     "url": "http://x.com",
     "fetcher": "static",
