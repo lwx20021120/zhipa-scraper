@@ -122,6 +122,8 @@ def _make_flet_module():
     flet.Icons = types.SimpleNamespace(ADD="add", PLAY_ARROW="play", SETTINGS="s",
                                        HISTORY="h", DELETE_OUTLINE="del")
     flet.Link = lambda **kw: kw
+    flet.Image = lambda **kw: kw
+    flet.ImageFit = types.SimpleNamespace(COVER="cover")
     return flet
 
 

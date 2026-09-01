@@ -652,9 +652,51 @@ class Crawl4AIEngine(BaseEngine):
                 f"Crawl4AI 未提取到结构化数据（页面可能无匹配元素或加载失败）。"
                 f"原始输出长度: {len(getattr(result, 'extracted_content', '') or '')}")
 
+        # 链接/图片绝对化：相对路径（/15_15556/ 或 /img/x.jpg）→ 完整 URL
+        # （用户要求"链接可点击、图片可点击显示"；前端用完整 URL 才能渲染超链接）
+        rows = self._absolutize_links(rows, url)
+
         _report(progress, f"✅ Crawl4AI 完成：{len(rows)} 行")
         return EngineResult(rows=rows, status=0, used_fetcher="crawl4ai",
                             engine=self.name, attempts=1)
+
+    def _absolutize_links(self, rows: list, base_url: str) -> list:
+        """把行里的相对链接/图片路径拼成完整 URL（基于抓取页 base_url）。
+
+        例如：
+          /15_15556/        → https://www.biquga.com/15_15556/
+          /img/15556.jpg    → https://www.biquga.com/img/15556.jpg
+          ../catalogue/x.html → https://.../catalogue/x.html
+        """
+        if not rows or not base_url:
+            return rows
+        from urllib.parse import urljoin, urlparse
+        # 规范化 base：确保有 scheme + host
+        base = base_url if base_url.startswith(("http://", "https://")) \
+            else "https://" + base_url
+        scheme = urlparse(base).scheme
+        host = urlparse(base).netloc
+        base_full = f"{scheme}://{host}" if scheme and host else base
+
+        out = []
+        for row in rows:
+            row = dict(row)
+            for k, v in list(row.items()):
+                if not isinstance(v, str) or not v:
+                    continue
+                # 字段名含链接/url/图片/封面/缩略图，或值本身像路径
+                is_url_field = any(kw in k.lower() for kw in (
+                    "链接", "url", "网址", "href", "图片", "封面",
+                    "缩略图", "img", "image", "cover", "src"))
+                starts_path = v.startswith(("/", "../", "./"))
+                if (is_url_field or starts_path) and starts_path:
+                    # 绝对路径 /xxx → 拼 host；相对路径 ../xxx → urljoin
+                    if v.startswith("/"):
+                        row[k] = base_full + v
+                    else:
+                        row[k] = urljoin(base_full + "/", v)
+            out.append(row)
+        return out
 
     def _parse_fields(self, user_input: str) -> list:
         """从自然语言解析字段（支持"提取X、Y和Z"/"提取XY"等格式）。"""

@@ -578,21 +578,61 @@ class MainView:
         self.pager.visible = True
 
     def _render_cell(self, field_name: str, value: str):
-        """单元格渲染：URL 字段变可点击链接，文本自动换行。"""
+        """单元格渲染：URL/链接→可点击超链接；图片→可点击缩略图；文本自动换行。
+
+        - 链接字段（链接/url/网址/href）或值以 http 开头 → 可点击链接
+        - 图片字段（图片/封面/缩略图/img/cover）或值以 http+图片后缀 → 缩略图
+        - 普通文本 → 自动换行
+        """
         if not value:
             return ft.Container(content=ft.Text("-", size=12), width=80)
-        # URL 字段渲染为可点击链接（自动识别 https?:// 或含 url/链接 字段名）
-        if (value.lower().startswith(("http://", "https://")) or
-                (any(k in field_name for k in ("链接", "url", "URL",
-                                                "图片", "image")) and
-                 value.lower().startswith(("http://", "https://", "/")))):
-            display = value if len(value) <= 50 else value[:50] + "…"
+        v = str(value).strip()
+        lower = v.lower()
+        fname = (field_name or "").lower()
+        is_img_field = any(k in fname for k in ("图片", "封面", "缩略图",
+                                                "img", "image", "cover",
+                                                "海报", "src"))
+        is_url_field = any(k in fname for k in ("链接", "url", "网址",
+                                                "href", "address"))
+        looks_img = lower.startswith(("http://", "https://")) and any(
+            lower.endswith(ext) for ext in (".jpg", ".jpeg", ".png", ".gif",
+                                            ".webp", ".bmp", ".svg"))
+        looks_url = lower.startswith(("http://", "https://"))
+
+        # 图片字段且值像图片 URL → 可点击缩略图
+        if (is_img_field and (looks_url or lower.startswith("/"))) or looks_img:
+            display = v if len(v) <= 40 else v[:40] + "…"
+            try:
+                return ft.Container(
+                    content=ft.Link(
+                        content=ft.Image(
+                            src=v if looks_url else "https:" + v,
+                            width=60, height=80,
+                            fit=ft.ImageFit.COVER,
+                            border_radius=4,
+                        ),
+                        url=v, tooltip=v,
+                    ),
+                    padding=2,
+                )
+            except Exception:
+                # 图片渲染失败退化为链接文本
+                return ft.Container(
+                    content=ft.Link(
+                        content=ft.Text(display, size=12,
+                                        color=ft.Colors.BLUE),
+                        url=v, tooltip=v),
+                    padding=4, width=120,
+                )
+        # URL/链接字段（或值像链接）→ 可点击超链接
+        if is_url_field or looks_url:
+            display = v if len(v) <= 50 else v[:50] + "…"
             return ft.Container(
                 content=ft.Link(
                     content=ft.Text(display, size=12,
                                     color=ft.Colors.BLUE,
                                     weight=ft.FontWeight.W_500),
-                    url=value, tooltip=value),
+                    url=v, tooltip=v),
                 padding=4, width=200,
             )
         # 普通文本：宽 180 + 自动换行（长文本占满列宽不挤压其他列）
