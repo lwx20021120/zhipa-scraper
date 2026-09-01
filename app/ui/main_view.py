@@ -509,12 +509,23 @@ class MainView:
 
         total_hint: 实际总行数（预览可能被截断，用于提示"预览前 200 行，
         共 N 行"）。不传或为 0 时用 len(rows)。
+
+        关键：必须**先清空 rows 再设 columns 再设 rows**。否则如果上一次的
+        rows 是 N 列、这次 cols 是 M 列（N≠M），中间会被 flet 检测到
+        "rows 的 DataCell 数 != columns 数"抛错（应用崩溃显示报错页）。
+        策略：先清空 → rows=0 永远不匹配失败 → 再设 columns → 再设新 rows。
         """
         if not rows:
+            self.data_table.rows = []
+            self.data_table.visible = False
             return
         cols = list(rows[0].keys())
+        # 1. 清空旧 rows（避免新旧列数不一致导致 flet 校验报错）
+        self.data_table.rows = []
+        # 2. 设新 columns（此时 rows=0，永不触发"cell 数 != 列数"校验）
         self.data_table.columns = [ft.DataColumn(ft.Text(c, weight=ft.FontWeight.BOLD))
                                   for c in cols]
+        # 3. 构建并设新 rows（同一次 _ui_update 调度内完成，flet 在下一帧渲染）
         cells = []
         for r in rows[:200]:
             row_cells = []

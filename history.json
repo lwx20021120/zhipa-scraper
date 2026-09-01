@@ -1,5 +1,36 @@
 [
   {
+    "time": "09-01 13:01",
+    "ai_input": "爬取这个网站的所有分类页面，提取书籍标题和价格",
+    "url": "https://books.toscrape.com/",
+    "fetcher": "auto",
+    "fields": [],
+    "pagination": {
+      "mode": "deep",
+      "max_pages": 2
+    },
+    "rows_count": 487,
+    "used_fetcher": "crawl4ai"
+  },
+  {
+    "time": "09-01 12:59",
+    "ai_input": "提取页面上所有书籍的标题、价格和链接",
+    "url": "https://books.toscrape.com/",
+    "fetcher": "auto",
+    "fields": [],
+    "rows_count": 20,
+    "used_fetcher": "crawl4ai"
+  },
+  {
+    "time": "09-01 12:56",
+    "ai_input": "爬取前10页的小说，小说名称，作者名称，最新章节名称，链接，小说书面图片",
+    "url": "https://www.biquga.com/",
+    "fetcher": "auto",
+    "fields": [],
+    "rows_count": 6,
+    "used_fetcher": "crawl4ai"
+  },
+  {
     "time": "09-01 12:52",
     "ai_input": "爬取这个网站的所有分类页面，提取书籍标题和价格",
     "url": "https://books.toscrape.com/",
