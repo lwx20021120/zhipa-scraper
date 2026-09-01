@@ -52,6 +52,33 @@ class MainView:
         self._build()
         self._restore_last_result()  # 恢复上次结果（web 刷新/重启后不丢数据）
 
+    # ---------- 线程安全 UI 更新（关键） ----------
+    # flet 的控件更新必须在主事件循环线程执行。后台抓取线程通过
+    # _ui_update 把 UI 操作调度回主线程（page.run_task 内部用
+    # asyncio.run_coroutine_threadsafe），否则控件变更不会被序列化
+    # 发送到前端（数据预览不刷新），且与 WebSocket 主循环竞争导致
+    # 连接中断（浏览器报错页）。
+    def _ui_update(self, fn, *args, **kwargs):
+        """线程安全地执行 UI 操作。
+
+        fn: 要在主线程执行的函数（改控件 + page.update 都放里面）。
+        """
+        async def _apply():
+            try:
+                fn(*args, **kwargs)
+                self.page.update()
+            except Exception:
+                pass  # 页面可能已销毁/刷新，忽略
+
+        try:
+            self.page.run_task(_apply)
+        except Exception:
+            # run_task 本身失败（如页面已关闭）：兜底直接调用
+            try:
+                fn(*args, **kwargs)
+            except Exception:
+                pass
+
     # ---------- 界面搭建 ----------
     def _build(self):
         p = self.page
@@ -381,7 +408,24 @@ class MainView:
                          daemon=True).start()
 
     def _scrape_worker(self, url, fetcher, fields, ai_input, pagination):
-        """后台线程执行抓取（AI 或手动模式）。"""
+        """后台线程执行抓取（AI 或手动模式）。
+
+        关键：抓取本身在后台线程跑，但**所有 flet 控件操作必须调度回
+        主线程**（_ui_update），否则数据预览不刷新、WebSocket 竞争断连。
+        """
+        def _set_finished_state(msg, show_table, rows=None, stale=False,
+                                stale_text=""):
+            """在主线程统一收尾：状态栏 + 表格 + 提示条 + 按钮恢复。"""
+            self.status_text.value = msg
+            if show_table and rows:
+                self._render_table(rows)
+            self.stale_note.visible = stale
+            if stale:
+                self.stale_note.value = stale_text
+            self.start_btn.disabled = False
+            self.progress.visible = False
+            self.export_btns.visible = bool(self.last_rows)
+
         try:
             if ai_input:
                 self._add_log("▶ 开始 AI 抓取流程…")
@@ -418,45 +462,47 @@ class MainView:
             # 成功但 0 行：不覆盖上次数据（保留旧结果，避免"刷新/重跑后白抓"）
             if rows:
                 self.last_rows = rows
-                self.stale_note.visible = False
-                self._render_table(rows)
                 last_result.save_last_result(rows, fields)
+                self._ui_update(_set_finished_state, msg, True, rows)
             elif self.last_rows:
-                self._render_table(self.last_rows)
-                self.stale_note.visible = True
-                self.stale_note.value = "（本次抓取返回 0 行，保留上次结果）"
-                msg += "（本次 0 行，保留上次数据）"
+                self._ui_update(_set_finished_state,
+                                msg + "（本次 0 行，保留上次数据）", True,
+                                self.last_rows, True,
+                                "（本次抓取返回 0 行，保留上次结果）")
             else:
-                self.stale_note.visible = False
-            self.status_text.value = msg
+                self._ui_update(_set_finished_state, msg, False)
             self._save_history(ai_input, url, fetcher, pagination,
                                len(rows), used_fetcher)
         except ScrapeError as err:
             # 失败不丢数据：保留上次结果继续展示（仅提示），除非从未抓到过
             if self.last_rows:
-                self._render_table(self.last_rows)
-                self.stale_note.visible = True
-                self.status_text.value = f"本次抓取失败：{err}（下方仍显示上次的 {len(self.last_rows)} 行结果）"
+                self._ui_update(_set_finished_state,
+                                f"本次抓取失败：{err}（下方仍显示上次的 "
+                                f"{len(self.last_rows)} 行结果）", True,
+                                self.last_rows, True,
+                                "（本次抓取失败，保留上次结果）")
                 self._show_snack(f"抓取失败：{err}（已保留上次数据）")
             else:
-                self.data_table.visible = False
-                self.status_text.value = f"失败：{err}"
+                self._ui_update(_set_finished_state, f"失败：{err}", False)
                 self._show_snack(f"抓取失败：{err}")
         except Exception as err:
             if self.last_rows:
-                self._render_table(self.last_rows)
-                self.stale_note.visible = True
-                self.status_text.value = f"本次出错：{err}（下方仍显示上次的 {len(self.last_rows)} 行结果）"
+                self._ui_update(_set_finished_state,
+                                f"本次出错：{err}（下方仍显示上次的 "
+                                f"{len(self.last_rows)} 行结果）", True,
+                                self.last_rows, True,
+                                "（本次出错，保留上次结果）")
                 self._show_snack(f"发生错误：{err}（已保留上次数据）")
             else:
-                self.data_table.visible = False
-                self.status_text.value = f"出错：{err}"
+                self._ui_update(_set_finished_state, f"出错：{err}", False)
                 self._show_snack(f"发生错误：{err}")
         finally:
-            self.start_btn.disabled = False
-            self.progress.visible = False
-            self.export_btns.visible = bool(self.last_rows)
-            self.page.update()
+            # 兜底：确保按钮/进度条恢复（若上面未走 _ui_update 分支）
+            def _ensure_finished():
+                self.start_btn.disabled = False
+                self.progress.visible = False
+                self.export_btns.visible = bool(self.last_rows)
+            self._ui_update(_ensure_finished)
 
     def _render_table(self, rows, total_hint: int = 0):
         """把抓取结果渲染成 DataTable。URL 字段渲染成可点击链接，列宽自适应。
@@ -559,17 +605,28 @@ class MainView:
         self._show_snack(f"已保存：{Path(path).name}")
 
     def _add_log(self, msg):
-        """追加一条运行日志（AI 过程可视化，最多保留 50 条）。"""
-        self.log_area.controls.append(ft.Text(f"· {msg}", size=12,
-                                              color=ft.Colors.GREY_800))
-        if len(self.log_area.controls) > 50:
-            del self.log_area.controls[:-50]
-        self.log_area.visible = True
-        self.status_text.value = msg
-        self.page.update()
+        """追加一条运行日志（AI 过程可视化，最多保留 50 条）。
+
+        由后台抓取线程调用 → 必须走线程安全更新，否则 UI 不刷新。
+        """
+        def _apply():
+            self.log_area.controls.append(ft.Text(
+                f"· {msg}", size=12, color=ft.Colors.GREY_800))
+            if len(self.log_area.controls) > 50:
+                del self.log_area.controls[:-50]
+            self.log_area.visible = True
+            self.status_text.value = msg
+        self._ui_update(_apply)
 
     def _show_snack(self, msg):
-        snack = ft.SnackBar(content=ft.Text(msg))
-        snack.open = True
-        self.page.overlay.append(snack)
-        self.page.update()
+        """显示提示条（线程安全；自动清理旧 snack 避免 overlay 堆积）。"""
+        def _apply():
+            # 先移除旧的 SnackBar（否则 overlay 无限累积，页面变卡）
+            self.page.overlay[:] = [
+                o for o in self.page.overlay
+                if not isinstance(o, ft.SnackBar)
+            ]
+            snack = ft.SnackBar(content=ft.Text(msg))
+            snack.open = True
+            self.page.overlay.append(snack)
+        self._ui_update(_apply)

@@ -92,8 +92,15 @@ class _Page:
     def pop_dialog(self, *a):
         pass
 
-    def run_task(self, *a, **kw):
-        pass
+    def run_task(self, handler, *a, **kw):
+        import asyncio
+        if callable(handler):
+            try:
+                coro = handler(*a, **kw)
+                if asyncio.iscoroutine(coro):
+                    asyncio.run(coro)
+            except Exception:
+                pass
 
 
 def run_ui_test():

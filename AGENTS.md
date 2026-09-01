@@ -29,12 +29,29 @@
 - Web 模式: `run_web.py`（端口 8550）或 `启动智爬.bat`
 - 参考源码: `third_party/browser-use-main`、`third_party/crawl4ai-main`（只读，勿删）
 
-## 引擎调度（app/engines.py）
+## 引擎调度（appengines.py）
 
-- `_pick_engine_plan`：智能场景调度——「整站/所有页面/所有分类」等 → Crawl4AI BFS 深爬；普通页面 → auto 链（Scrapling → Crawl4AI → direct → agent → browser-use）
+- `_pick_engine_plan`：智能场景调度——「整站/所有页面/所有分类」等 → Crawl4AI BFS 深爬；普通页面 →auto 链（Scrapling →Crawl4AI →direct →agent →browser-use）
 - 深爬关键词必须明确指向"多页面"（整站/全站/所有页面/所有分类/所有链接等），「所有书籍」不算深爬
 - `run_pipeline` 支持 `**kwargs` 透传引擎专属参数（deep_max_depth/max_pages/cache_mode/use_llm_extraction），按签名过滤
 - Crawl4AIEngine 用官方 `generate_schema(url, query, llm_config)` 让 DeepSeek 从真实页面生成精确 schema（等价 AI 看源代码找字段），失败回退通用 schema
+
+## 融合引擎架构（app/unified_engine.py，**本项目核心创新**）
+
+- 不是顺序回退，是**真正融合**：场景画像 → 并行竞争/管道协作 → 质量仲裁 → 字段融合
+- 三大组件：
+  - `ScenarioAnalyzer`：纯关键词分析
+  - `LLMScenarioAnalyzer`：**LLM 推理 + 关键词降级**（融合引擎泛化方案 A）
+  - `PlanBuilder`：根据场景画像生成 race/pipeline/enhance 计划
+  - `QualityScorer`：行数/完整率/空值率/去重率综合评分
+  - `Arbiter`：多引擎结果选优 + 字段级融合
+- 三种执行模式：
+  - **race 并行竞争**：多引擎同时跑，先出高分者胜（核心时间时间）
+  - **pipeline 管道协作**：A 产出 → B 消费（如 agent 登录 → 提取引擎消费登录态）
+  - **enhance 增强**：主结果 + 辅助引擎补字段
+- `UnifiedEngine` 是统一入口（run_pipeline auto/unified 默认走融合引擎）
+- 架构文档：`融合引擎架构文档.md`
+- 关键修复：**litellm 环境变量 bug**（Crawl4AI/browser-use 调 AI 前必须 `os.environ["DEEPSEEK_API_KEY"] = key`，否则读不到正确的 key）
 
 ## 关键文件
 

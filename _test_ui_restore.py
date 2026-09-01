@@ -58,8 +58,17 @@ class _FakePage:
     def pop_dialog(self, *a):
         pass
 
-    def run_task(self, *a, **kw):
-        pass
+    def run_task(self, handler, *a, **kw):
+        # 模拟 flet run_task：同步执行协程（测试环境无事件循环）
+        import asyncio
+        if callable(handler):
+            try:
+                coro = handler(*a, **kw)
+                if asyncio.iscoroutine(coro):
+                    asyncio.run(coro)
+                return
+            except Exception:
+                pass
 
 
 def _make_flet_module():
@@ -149,9 +158,10 @@ def test_engine_dropdown_has_crawl4ai():
     keys = [o["key"] for o in opts]
     print(f"  引擎选项: {keys}")
     assert "crawl4ai" in keys, "引擎下拉缺少 crawl4ai 选项"
-    assert len(keys) == 6, f"应有 6 个引擎选项，实际 {len(keys)}"
-    print("  ✅ 引擎下拉含全部 6 个引擎（auto/scrapling/direct/agent/"
-          "browser-use/crawl4ai）")
+    assert "unified" in keys, "引擎下拉缺少 unified 选项"
+    assert len(keys) == 7, f"应有 7 个引擎选项，实际 {len(keys)}"
+    print("  ✅ 引擎下拉含全部 7 个引擎（auto/unified/scrapling/direct/"
+          "agent/browser-use/crawl4ai）")
     return True
 
 
