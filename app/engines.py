@@ -546,15 +546,37 @@ class Crawl4AIEngine(BaseEngine):
             )
 
             # 深爬：BFSDeepCrawlStrategy（官方 deep_crawling 模块）
-            # 只对明确指向多页面/整站的说法触发（"所有书籍"不算深爬）
-            is_deep = (deep_max_depth > 0
-                       and any(k in user_input for k in (
-                           "整站", "全站", "所有页面", "全部页面",
-                           "整个网站", "所有分类", "全部分类",
-                           "所有链接", "全部链接", "所有文章",
-                           "所有新闻", "所有帖子", "所有栏目",
-                           "全部栏目", "网站所有", "爬取整个",
-                           "遍历全站", "全站所有")))
+            # 触发场景：①明确指向多页面/整站 ②"前N页/翻N页/N页"等多页指令
+            # 触发场景：①用户 UI 填了 pg_deep（deep_max_depth>0）
+            #          ②指令含"前N页/翻N页/整站"等多页词（即使 UI 没填也自动深爬）
+            deep_keywords = (
+                "整站", "全站", "所有页面", "全部页面",
+                "整个网站", "所有分类", "全部分类",
+                "所有链接", "全部链接", "所有文章",
+                "所有新闻", "所有帖子", "所有栏目",
+                "全部栏目", "网站所有", "爬取整个",
+                "遍历全站", "全站所有", "前十页", "前N页",
+                "前几页", "多页", "翻页", "翻到第")
+            is_deep = any(k in user_input for k in deep_keywords) or (deep_max_depth and deep_max_depth > 0)
+            # 指令含深爬词但 UI 没填 pg_deep → 自动给默认 depth 1
+            _effective_depth = deep_max_depth if deep_max_depth else 0
+            # 从指令自动提取"前N页/N页/翻N页"里的数字（默认 10 页）
+            # 注意：用 _extracted_max 而不直接改 max_pages（避免 UnboundLocalError——
+            # Python 看到 if-block 里有 max_pages=... 赋值就把整个变量当 local）
+            _extracted_max = max_pages
+            if is_deep and max_pages == 10:
+                import re
+                m = re.search(r"前\s*(\d+)\s*页", user_input or "")
+                if m:
+                    _extracted_max = int(m.group(1))
+                else:
+                    m2 = re.search(r"(?:翻|爬|采)\s*(\d+)\s*页", user_input or "")
+                    if m2:
+                        _extracted_max = int(m2.group(1))
+            if is_deep and _effective_depth == 0:
+                _effective_depth = 1
+                _report(progress, f"🕸️ 检测到多页指令，自动启用 BFS 深爬"
+                                 f"（max_depth=1, max_pages={_extracted_max}）")
             if is_deep:
                 try:
                     from crawl4ai.deep_crawling import BFSDeepCrawlStrategy
@@ -562,9 +584,9 @@ class Crawl4AIEngine(BaseEngine):
                         cache_mode=cache,
                         extraction_strategy=strategy,
                         deep_crawl_strategy=BFSDeepCrawlStrategy(
-                            max_depth=deep_max_depth,
+                            max_depth=_effective_depth,
                             include_external=False,
-                            max_pages=max_pages,
+                            max_pages=_extracted_max,
                         ),
                     )
                 except Exception as e:
