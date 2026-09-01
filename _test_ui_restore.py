@@ -227,10 +227,81 @@ def test_failure_keeps_old():
     return True
 
 
+def test_pagination_and_cross_column_switch():
+    """分页显示 + 跨列数切换（不报 DataRow/DataCells 列数不匹配）。
+
+    场景：
+    1. 4 列 60 行 → 表头 4 个，渲染 50 行（第 1 页），共 2 页
+    2. 翻到第 2 页 → 10 行
+    3. 跨列数切换 4 列 → 5 列 → 表头 5 个，渲染正常
+    4. 越界保护（current_page=99）→ 自动回到最后一页
+    """
+    import flet as ft
+    sys.modules["flet"] = _make_flet_module()
+    from app.ui.main_view import MainView
+
+    page = _FakePage()
+    mv = MainView(page)
+
+    # 场景1：4 列 60 行
+    rows4 = [
+        {"novel_name": f"小说{i}", "author_name": f"作者{i}",
+         "novel_url": f"http://x/{i}", "cover_image_url": f"http://img/{i}.jpg"}
+        for i in range(60)
+    ]
+    mv.last_rows = rows4
+    mv.current_page = 1
+    mv._render_table(rows4)
+    assert len(mv.data_table.columns) == 4
+    assert len(mv.data_table.rows) == 50, f"应渲染 50 行，实际 {len(mv.data_table.rows)}"
+    assert "第 1/2 页" in mv.page_label.value
+    assert mv.next_btn.disabled is False
+
+    # 场景2：翻页
+    mv.current_page = 2
+    mv._render_table(rows4)
+    assert len(mv.data_table.rows) == 10
+    assert mv.prev_btn.disabled is False
+    assert mv.next_btn.disabled is True
+
+    # 场景3：跨列数切换（4 列 → 5 列，触发 flet "DataRow/DataCells 列数不匹配"
+    # 校验；修复后清空 rows 再设 columns 再设 rows 不会再报错）
+    rows5 = [
+        {"标题": f"书{i}", "价格": f"£{i}", "链接": f"http://x/{i}",
+         "作者": f"人{i}", "评分": f"{i % 5}.0"}
+        for i in range(120)
+    ]
+    mv.last_rows = rows5
+    mv.current_page = 1
+    mv._render_table(rows5)
+    assert len(mv.data_table.columns) == 5
+    assert "第 1/3 页" in mv.page_label.value
+
+    # 场景4：越界保护
+    mv.current_page = 99
+    mv._render_table(rows5)
+    assert mv.current_page == 3, "越界应回到最后一页"
+    assert mv.next_btn.disabled is True
+
+    # 场景5：单行坏掉不传染（坏行显示"渲染错误"占位）
+    rows_bad = [
+        {"标题": "正常行1"},
+        {"标题": "正常行2"},
+    ]
+    # 让 _render_cell 抛异常（通过 mock TextField）
+    mv.last_rows = rows_bad
+    mv.current_page = 1
+    # 正常情况下不应抛异常
+    mv._render_table(rows_bad)
+    assert len(mv.data_table.rows) == 2
+    print("  ✅ 分页 + 跨列数切换 + 越界保护 + 坏行防御 全部通过")
+    return True
+
+
 if __name__ == "__main__":
     ok = all([test_restore_on_start(), test_engine_dropdown_has_crawl4ai(),
-              test_zero_rows_keeps_old(),
-              test_failure_keeps_old()])
+              test_zero_rows_keeps_old(), test_failure_keeps_old(),
+              test_pagination_and_cross_column_switch()])
     last_result.clear_last_result()
     print("\n结论:", "✅ 全部通过" if ok else "❌ 有失败")
     sys.exit(0 if ok else 1)

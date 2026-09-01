@@ -1,5 +1,28 @@
 [
   {
+    "time": "09-01 13:18",
+    "ai_input": "",
+    "url": "http://x.com",
+    "fetcher": "static",
+    "fields": [
+      {
+        "name": "标题",
+        "selector": "h3"
+      }
+    ],
+    "rows_count": 0,
+    "used_fetcher": "static"
+  },
+  {
+    "time": "09-01 13:16",
+    "ai_input": "爬取这个网站前十页的小说的小说名，作者名称，小说链接，并进去该小说标签页爬取封面和最新章节的标题",
+    "url": "https://www.biquga.com/",
+    "fetcher": "auto",
+    "fields": [],
+    "rows_count": 6,
+    "used_fetcher": "crawl4ai"
+  },
+  {
     "time": "09-01 13:14",
     "ai_input": "爬取这个网站的所有分类页面，提取书籍标题和价格",
     "url": "https://books.toscrape.com/",
@@ -334,23 +357,5 @@
     ],
     "rows_count": 0,
     "used_fetcher": "static"
-  },
-  {
-    "time": "09-01 10:45",
-    "ai_input": "爬取https://www.biquga.com/list/0/1.html这个网站里，前六个带图片的小说的小说名和图片，以及相应链接",
-    "url": "https://www.biquga.com/list/0/1.html",
-    "fetcher": "auto",
-    "fields": [],
-    "rows_count": 6,
-    "used_fetcher": "直提"
-  },
-  {
-    "time": "08-31 22:48",
-    "ai_input": "爬取https://www.biquga.com/list/0/1.html这个网站里，前六个带图片的小说的小说名和图片，以及相应链接",
-    "url": "https://www.biquga.com/list/0/1.html",
-    "fetcher": "auto",
-    "fields": [],
-    "rows_count": 6,
-    "used_fetcher": "直提"
   }
 ]
