@@ -47,8 +47,11 @@ AI_HINT = ("AI 模式：输入一句话即可，例如「爬这个页面的商�
 class MainView:
     def __init__(self, page: ft.Page):
         self.page = page
-        self.last_rows = []          # 最近一次抓取结果
+        self.last_rows = []          # 最近一次抓取结果（全部数据，分页显示用）
         self.last_fields = []        # 最近一次抓取的字段配置
+        # 分页状态（数据预览区每次只渲染 PAGE_SIZE 行，避免 flet DataTable 渲染大量行卡死）
+        self.page_size = 50
+        self.current_page = 1
         self._build()
         self._restore_last_result()  # 恢复上次结果（web 刷新/重启后不丢数据）
 
@@ -155,17 +158,23 @@ class MainView:
             spacing=8, visible=False,
         )
 
-        # 数据预览表（动态列，纵向滚动）
+        # 数据预览表（分页：一次只渲染 PAGE_SIZE 行；全部数据在 self.last_rows）
         self.data_table = ft.DataTable(columns=[ft.DataColumn(ft.Text("暂无数据"))], rows=[], visible=False)
         # 「上次结果」提示条：本次抓取失败/没拿到新数据时，保留上次数据并提示
         self.stale_note = ft.Text(
             "（显示上次抓取结果，本次未获取到新数据）",
             size=12, color=ft.Colors.ORANGE_700, visible=False,
         )
-        # 预览行数提示（如"预览前 200 行，共 500 行"），独立于状态栏避免叠加
-        self.preview_note = ft.Text("", size=11, color=ft.Colors.GREY_600, visible=False)
+        # 分页控件
+        self.prev_btn = ft.ElevatedButton("‹ 上一页", on_click=lambda e: self._on_paginate(-1),
+                                          disabled=True)
+        self.next_btn = ft.ElevatedButton("下一页 ›", on_click=lambda e: self._on_paginate(1))
+        self.page_label = ft.Text("", size=12, color=ft.Colors.GREY_600)
+        self.pager = ft.Row([self.prev_btn, self.page_label, self.next_btn],
+                            alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+                            visible=False)
         self.table_scroll = ft.Column(
-            [self.stale_note, self.data_table, self.preview_note],
+            [self.stale_note, self.data_table, self.pager],
             scroll=ft.ScrollMode.AUTO,
             height=420,
         )
@@ -234,6 +243,14 @@ class MainView:
         self.field_list.controls.remove(row)
         self.page.update()
 
+    def _on_paginate(self, delta: int):
+        """翻页按钮回调：±1 切换当前页。"""
+        self.current_page += delta
+        if self.current_page < 1:
+            self.current_page = 1
+        if self.last_rows:
+            self._ui_update(self._render_table, self.last_rows)
+
     # ---------- 上次结果恢复 ----------
     def _restore_last_result(self):
         """应用启动/页面刷新后恢复上次抓取结果，避免数据丢失。"""
@@ -242,14 +259,17 @@ class MainView:
             return
         self.last_rows = rows
         self.last_fields = fields
-        self._render_table(rows, total_hint=total)
-        note = f"已恢复上次抓取结果（预览 {len(rows)} 行"
+        self.current_page = 1  # 恢复时重置到第一页
+        # 不传 total_hint：让 _render_table 用实际行数（避免旧 last_result
+        # 残留数字与新数据列数不一致时混乱）
+        self._render_table(rows, total_hint=0)
+        note = f"已恢复上次抓取结果（{len(rows)} 行"
         if total and total > len(rows):
-            note += f"/共 {total} 行"
+            note += f"，持久化记录共 {total} 行"
         note += "）"
         self.stale_note.value = note
         self.stale_note.visible = True
-        self.status_text.value = f"上次结果已恢复（共 {total or len(rows)} 行）"
+        self.status_text.value = f"上次结果已恢复（共 {len(rows)} 行）"
         print(f"[last_result] 已恢复上次数据 {len(rows)} 行（total={total}）")
         self._show_snack(f"🔄 已恢复上次抓取结果（{len(rows)} 行）")
         self.page.update()
@@ -505,44 +525,57 @@ class MainView:
             self._ui_update(_ensure_finished)
 
     def _render_table(self, rows, total_hint: int = 0):
-        """把抓取结果渲染成 DataTable。URL 字段渲染成可点击链接，列宽自适应。
+        """把抓取结果渲染成 DataTable（分页：一次 PAGE_SIZE 行）。URL 字段渲染为可点击链接。
 
-        total_hint: 实际总行数（预览可能被截断，用于提示"预览前 200 行，
-        共 N 行"）。不传或为 0 时用 len(rows)。
-
-        关键：必须**先清空 rows 再设 columns 再设 rows**。否则如果上一次的
-        rows 是 N 列、这次 cols 是 M 列（N≠M），中间会被 flet 检测到
-        "rows 的 DataCell 数 != columns 数"抛错（应用崩溃显示报错页）。
-        策略：先清空 → rows=0 永远不匹配失败 → 再设 columns → 再设新 rows。
+        关键：①必须**先清空 rows 再设 columns 再设 rows**，避免新旧列数不一致
+        触发 flet "DataRow/DataCells 列数不匹配" 校验报错；②用**实际 rows 数**（不
+        用 total_hint）避免旧 last_result 残留数字干扰显示；③单行渲染加
+        try/except 防御，个别坏行不传染；④**分页**渲染（flet DataTable 一次渲染
+        几百行会卡死），self.last_rows 保留全部数据，self.current_page 控制当前页。
         """
         if not rows:
             self.data_table.rows = []
+            self.data_table.columns = [ft.DataColumn(ft.Text("暂无数据"))]
             self.data_table.visible = False
+            self.pager.visible = False
             return
         cols = list(rows[0].keys())
-        # 1. 清空旧 rows（避免新旧列数不一致导致 flet 校验报错）
+        # 1. 清空旧 rows（rows=0 永不触发"cell 数 != 列数"校验）
         self.data_table.rows = []
-        # 2. 设新 columns（此时 rows=0，永不触发"cell 数 != 列数"校验）
+        # 2. 设新 columns
         self.data_table.columns = [ft.DataColumn(ft.Text(c, weight=ft.FontWeight.BOLD))
                                   for c in cols]
-        # 3. 构建并设新 rows（同一次 _ui_update 调度内完成，flet 在下一帧渲染）
+        # 3. 分页计算 + 渲染当前页
+        total = len(rows)
+        total_pages = max(1, (total + self.page_size - 1) // self.page_size)
+        # current_page 越界保护（重新设置后页数可能减少）
+        if self.current_page > total_pages:
+            self.current_page = total_pages
+        if self.current_page < 1:
+            self.current_page = 1
+        start_idx = (self.current_page - 1) * self.page_size
+        end_idx = start_idx + self.page_size
+        page_rows = rows[start_idx:end_idx]
+        # 4. 渲染当前页（单行 try/except 防御坏行）
         cells = []
-        for r in rows[:200]:
+        for r in page_rows:
             row_cells = []
             for c in cols:
-                v = str(r.get(c, ""))
-                row_cells.append(ft.DataCell(self._render_cell(c, v)))
+                try:
+                    v = str(r.get(c, ""))
+                    row_cells.append(ft.DataCell(self._render_cell(c, v)))
+                except Exception:
+                    # 单行坏掉不传染：填占位 cell
+                    row_cells.append(ft.DataCell(ft.Text("(渲染错误)",
+                                                          size=11)))
             cells.append(ft.DataRow(cells=row_cells))
+        # 5. 同步设 rows + 翻页控件
         self.data_table.rows = cells
         self.data_table.visible = True
-        # 预览行数提示独立显示（不叠加到状态栏，避免文字越积越长）
-        total = total_hint or len(rows)
-        if total > 200:
-            self.preview_note.value = f"预览前 200 行，共 {total} 行"
-            self.preview_note.visible = True
-        else:
-            self.preview_note.value = ""
-            self.preview_note.visible = False
+        self.prev_btn.disabled = (self.current_page <= 1)
+        self.next_btn.disabled = (self.current_page >= total_pages)
+        self.page_label.value = f"第 {self.current_page}/{total_pages} 页 · 共 {total} 条"
+        self.pager.visible = True
 
     def _render_cell(self, field_name: str, value: str):
         """单元格渲染：URL 字段变可点击链接，文本自动换行。"""

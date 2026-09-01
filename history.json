@@ -1,5 +1,64 @@
 [
   {
+    "time": "09-01 13:14",
+    "ai_input": "爬取这个网站的所有分类页面，提取书籍标题和价格",
+    "url": "https://books.toscrape.com/",
+    "fetcher": "auto",
+    "fields": [],
+    "pagination": {
+      "mode": "deep",
+      "max_pages": 2
+    },
+    "rows_count": 486,
+    "used_fetcher": "crawl4ai"
+  },
+  {
+    "time": "09-01 13:13",
+    "ai_input": "提取页面上所有书籍的标题、价格和链接",
+    "url": "https://books.toscrape.com/",
+    "fetcher": "auto",
+    "fields": [],
+    "rows_count": 20,
+    "used_fetcher": "crawl4ai"
+  },
+  {
+    "time": "09-01 13:11",
+    "ai_input": "",
+    "url": "http://x.com",
+    "fetcher": "static",
+    "fields": [
+      {
+        "name": "标题",
+        "selector": "h3"
+      }
+    ],
+    "rows_count": 0,
+    "used_fetcher": "static"
+  },
+  {
+    "time": "09-01 13:05",
+    "ai_input": "",
+    "url": "http://x.com",
+    "fetcher": "static",
+    "fields": [
+      {
+        "name": "标题",
+        "selector": "h3"
+      }
+    ],
+    "rows_count": 0,
+    "used_fetcher": "static"
+  },
+  {
+    "time": "09-01 13:04",
+    "ai_input": "爬取这个网址前十页的小说，小说名，作者名，小说网页链接，小说封面图片，最新章节名",
+    "url": "https://www.biquga.com/",
+    "fetcher": "auto",
+    "fields": [],
+    "rows_count": 6,
+    "used_fetcher": "crawl4ai"
+  },
+  {
     "time": "09-01 13:01",
     "ai_input": "爬取这个网站的所有分类页面，提取书籍标题和价格",
     "url": "https://books.toscrape.com/",
@@ -293,33 +352,5 @@
     "fields": [],
     "rows_count": 6,
     "used_fetcher": "直提"
-  },
-  {
-    "time": "08-31 22:41",
-    "ai_input": "爬取豆瓣电影榜单top50，电影名，评分，链接",
-    "url": "",
-    "fetcher": "auto",
-    "fields": [
-      {
-        "name": "电影名",
-        "selector": "ol.grid_view .item .hd .title",
-        "type": "text",
-        "attr": ""
-      },
-      {
-        "name": "评分",
-        "selector": "ol.grid_view .item .star .rating_num",
-        "type": "text",
-        "attr": ""
-      },
-      {
-        "name": "链接",
-        "selector": "ol.grid_view .item .hd a",
-        "type": "attr",
-        "attr": "href"
-      }
-    ],
-    "rows_count": 50,
-    "used_fetcher": "static"
   }
 ]

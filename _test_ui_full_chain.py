@@ -39,6 +39,10 @@ def _make_flet():
         AUTO = "auto"
     flet.ScrollMode = _ScrollMode
 
+    class _MainAxisAlignment:
+        SPACE_BETWEEN = "spaceBetween"
+    flet.MainAxisAlignment = _MainAxisAlignment
+
     flet.Text = lambda *a, **kw: _t.SimpleNamespace(
         value=kw.get("value", a[0] if a else ""), visible=kw.get("visible", True),
         color=kw.get("color"), size=kw.get("size"), max_lines=kw.get("max_lines"),
@@ -60,7 +64,8 @@ def _make_flet():
     flet.DropdownOption = lambda **kw: kw
     flet.TextField = lambda **kw: _t.SimpleNamespace(
         value=kw.pop("value", ""), disabled=kw.pop("disabled", False), **kw)
-    flet.ElevatedButton = lambda *a, **kw: _t.SimpleNamespace(disabled=False, **kw)
+    flet.ElevatedButton = lambda *a, **kw: _t.SimpleNamespace(disabled=kw.pop("disabled", False), **kw)
+    flet.OutlinedButton = lambda *a, **kw: _t.SimpleNamespace(disabled=kw.pop("disabled", False), **kw)
     flet.IconButton = lambda *a, **kw: _t.SimpleNamespace(**kw)
     flet.Checkbox = lambda **kw: _t.SimpleNamespace(**kw)
     flet.ProgressRing = lambda **kw: _t.SimpleNamespace(**kw)

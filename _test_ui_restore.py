@@ -95,6 +95,10 @@ def _make_flet_module():
         AUTO = "auto"
     flet.ScrollMode = _ScrollMode
 
+    class _MainAxisAlignment:
+        SPACE_BETWEEN = "spaceBetween"
+    flet.MainAxisAlignment = _MainAxisAlignment
+
     flet.Text = _FakeText
     flet.Column = _FakeColumn
     flet.DataTable = _FakeTable
@@ -138,11 +142,15 @@ def test_restore_on_start():
     assert mv.data_table.visible, "表格应可见"
     assert mv.data_table.columns, "应生成列"
     assert mv.data_table.rows, "应生成行"
-    assert len(mv.data_table.rows) == 200, "只预览 200 行"
-    assert mv.preview_note.visible and "200" in mv.preview_note.value, "应有预览提示"
+    # 新版分页：只渲染 PAGE_SIZE 行（默认 50），250 行数据分 5 页
+    assert len(mv.data_table.rows) == mv.page_size, \
+        f"只渲染 {mv.page_size} 行（分页）"
+    assert mv.pager.visible, "分页控件应可见"
+    assert mv.current_page == 1, "恢复时回到第 1 页"
+    assert "第 1/5 页" in mv.page_label.value, "应显示分页信息"
     assert "已恢复" in mv.stale_note.value, "stale_note 应有恢复提示"
     assert "已恢复" in mv.status_text.value, "状态栏应有恢复提示"
-    print("  ✅ 启动恢复 + 200 行预览提示")
+    print(f"  ✅ 启动恢复 + 分页渲染（{len(mv.data_table.rows)}/{len(rows)} 行，第 1/5 页）")
     return True
 
 
