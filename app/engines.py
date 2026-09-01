@@ -575,6 +575,9 @@ class Crawl4AIEngine(BaseEngine):
                         _extracted_max = int(m2.group(1))
             if is_deep and _effective_depth == 0:
                 _effective_depth = 1
+                # BFS 会沿分页链接爬，也会进入详情页消耗 pages 预算；
+                # 至少 50 个 URL 预算确保能爬多个分类页
+                _extracted_max = max(_extracted_max, 50)
                 _report(progress, f"🕸️ 检测到多页指令，自动启用 BFS 深爬"
                                  f"（max_depth=1, max_pages={_extracted_max}）")
             if is_deep:
@@ -627,6 +630,20 @@ class Crawl4AIEngine(BaseEngine):
                     if key:
                         seen.add(key)
                     rows.append(row)
+
+            # 字段空率检测：AI 推断的 schema 在笔趣阁等"链接+标题"结构上
+            # 可能 baseSelector 选错（如选了 .item 但页面用 <ul><li>），
+            # 导致行数多但字段全空。BFS 深爬后检测：若 >30% 行核心字段为空
+            # → 自动 fallback 用更宽泛的 schema 重跑
+            if rows and self._has_too_many_empty_fields(rows):
+                _report(progress,
+                        "⚠️ AI schema 字段空率过高，自动 fallback 到宽泛 schema 重跑…")
+                fallback_rows = _run_async(self._fallback_deep_crawl(
+                    url, user_input, fields, deep_max_depth, max_pages,
+                    cache, browser_conf, progress))
+                if fallback_rows:
+                    # 用 fallback 覆盖原结果
+                    rows = fallback_rows
         else:
             rows = _collect(getattr(result, "extracted_content", ""))
 
@@ -714,11 +731,125 @@ class Crawl4AIEngine(BaseEngine):
             })
         return {
             "name": "页面数据",
+            # baseSelector 加 .txt-list li / a[href*='_'] 等笔趣阁/小说站常见结构
             "baseSelector": ("article, .product, .product_pod, .item, "
-                             ".card, .goods, [class*=product], "
-                             "[class*=item], [class*=card], li"),
+                             ".card, .goods, .txt-list li, .book-list li, "
+                             ".book, ul.list li, [class*=product], "
+                             "[class*=item], [class*=card], [class*=book], li"),
             "fields": schema_fields,
         }
+
+    def _has_too_many_empty_fields(self, rows: list, threshold: float = 0.3) -> bool:
+        """检测 BFS 深爬结果是否大量行核心字段为空（AI schema 选错的信号）。
+
+        阈值：超过 30% 的行核心字段（第一个非空键的字段）为空 → 触发 fallback。
+        """
+        if not rows:
+            return False
+        # 取第一个有数据的行的第一个字段（AI 推断的"主字段"如 book_name）
+        for r in rows:
+            keys = [k for k in r.keys() if k]
+            if keys:
+                main_field = keys[0]
+                break
+        else:
+            return False
+        empty_count = sum(1 for r in rows
+                          if not str(r.get(main_field, "")).strip())
+        return (empty_count / len(rows)) > threshold
+
+    def _fallback_deep_crawl(self, url, user_input, fields, deep_max_depth,
+                             max_pages, cache, browser_conf, progress):
+        """深爬 fallback：BFS 跑完后字段空率高时，用最宽泛 schema 重新跑 BFS。
+
+        思路：AI 推断的 schema 在笔趣阁等"链接直接当标题"的站点上选错
+        baseSelector；用最宽泛的 selector（a[href*='_'] 小说站链接格式）重跑。
+        """
+        from crawl4ai import AsyncWebCrawler, CrawlerRunConfig
+        from crawl4ai.extraction_strategy import JsonCssExtractionStrategy
+        from crawl4ai.deep_crawling import BFSDeepCrawlStrategy
+
+        # 字段名推断（按用户指令中常见中文名）
+        # 直接从 fields 拿，没 fields 时用通用名
+        field_names = [f.get("name", "字段") for f in (fields or [])] \
+                      or ["书名", "作者", "链接"]
+        # 映射到 selector 提示：笔趣阁等小说站结构：<dt><span>作者</span>
+        # <a>书名</a></dt>，分页/详情链接是 <a href*='_'>
+        FIELD_SELECTORS = {
+            "标题": "dt a, h3 a, .title a, a[href*='_']",
+            "书名": "dt a, h3 a, .title a, a[href*='_']",
+            "小说名": "dt a, h3 a, .title a, a[href*='_']",
+            "文章": "dt a, h3 a, .title a, a[href*='_']",
+            "商品": "dt a, h3 a, .title a, a[href*='_']",
+            "作者": "dt span:first-child, .author, span:first-child",
+            "作者名": "dt span:first-child, .author, span:first-child",
+            "作者名称": "dt span:first-child, .author, span:first-child",
+            "链接": "a[href*='_']",
+            "小说链接": "a[href*='_']",
+            "URL": "a[href*='_']",
+            "url": "a[href*='_']",
+        }
+        schema_fields = []
+        for name in field_names:
+            if "链接" in name or "url" in name.lower() or "URL" == name:
+                schema_fields.append({
+                    "name": name, "selector": "a[href*='_']",
+                    "type": "attribute", "attribute": "href"})
+            else:
+                sel = FIELD_SELECTORS.get(name, "dt a, h3 a, a")
+                schema_fields.append({
+                    "name": name, "selector": sel, "type": "text"})
+        # 最精准的 baseSelector：笔趣阁/番茄等小说站用 .item 容器
+        schema = {
+            "name": "fallback",
+            "baseSelector": (".item, .txt-list li, .book-list li, "
+                             "ul li[class*='item'], .book-item, "
+                             "div.listbox > div, .novel-list li, "
+                             "article, li"),
+            "fields": schema_fields,
+        }
+
+        async def _run_fb():
+            conf = CrawlerRunConfig(
+                cache_mode=cache,
+                extraction_strategy=JsonCssExtractionStrategy(schema),
+                deep_crawl_strategy=BFSDeepCrawlStrategy(
+                    max_depth=deep_max_depth,
+                    include_external=False,
+                    max_pages=max_pages,
+                ),
+            )
+            async with AsyncWebCrawler(config=browser_conf) as crawler:
+                return await crawler.arun(url=url, config=conf)
+
+        try:
+            result = _run_async(_run_fb)
+        except Exception as e:
+            _report(progress, f"⚠️ fallback 也失败：{e}")
+            return []
+
+        rows = []
+        seen = set()
+        for r in (result if isinstance(result, list) else [result]):
+            content = getattr(r, "extracted_content", "") or ""
+            if not content:
+                continue
+            try:
+                data = json.loads(content)
+                items = data if isinstance(data, list) else [data]
+                for row in items:
+                    if not isinstance(row, dict):
+                        continue
+                    key = str(row.get(next(iter(row), ""), ""))
+                    if key and key in seen:
+                        continue
+                    if key:
+                        seen.add(key)
+                    rows.append(row)
+            except (json.JSONDecodeError, TypeError):
+                continue
+        _report(progress, f"✅ fallback 拿到 {len(rows)} 行")
+        return rows
 
 
 # ---------- 调度器 ----------

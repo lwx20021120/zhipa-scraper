@@ -397,6 +397,12 @@ def _llm_analyze_sync(user_input, url, probe_text, api_key, hint):
     needs_pagination = bool(parsed.get("needs_pagination", False))
     needs_deep = bool(parsed.get("needs_deep_crawl",
                           scenario == SCENARIO_DEEP))
+    # 关键修复：用户说"前N页/翻N页" → LLM 推断 needs_pagination=true
+    # → 也走深爬（避免被 race 里 scrapling 6 行首页抢跑）
+    if needs_pagination and not needs_deep:
+        needs_deep = True
+        if scenario == SCENARIO_DYNAMIC:
+            scenario = SCENARIO_DEEP
     # 字段信息
     fields = parsed.get("fields") or []
     if fields:
@@ -530,40 +536,69 @@ class PlanBuilder:
             ))
         elif prof.scenario == SCENARIO_DYNAMIC:
             # 动态页：并行竞争（crawl4ai 渲染 vs agent 浏览器）
-            plan.nodes.append(PlanNode(
-                mode="race",
-                engine_names=["scrapling", "crawl4ai"],
-                timeout=120,
-            ))
-            plan.nodes.append(PlanNode(
-                mode="race",
-                engine_names=["direct"],
-                timeout=90,
-            ))
+            # 关键修复：如果 profile.is_deep=True（用户要"前N页"等多页深爬），
+            # 不再 race scrapling（秒级首页 6 行抢跑覆盖 慢 BFS 多页结果），
+            # 只跑 crawl4ai BFS 拿到所有页
+            if prof.is_deep:
+                plan.nodes.append(PlanNode(
+                    mode="race",
+                    engine_names=["crawl4ai"],
+                    timeout=300,
+                    params={"deep_max_depth": 1, "max_pages": 10},
+                ))
+            else:
+                plan.nodes.append(PlanNode(
+                    mode="race",
+                    engine_names=["scrapling", "crawl4ai"],
+                    timeout=120,
+                ))
+                plan.nodes.append(PlanNode(
+                    mode="race",
+                    engine_names=["direct"],
+                    timeout=90,
+                ))
         elif prof.scenario == SCENARIO_ANTIBOT:
             # 反爬页：agent 引擎（伪装浏览器 + DOM 视图）
-            plan.nodes.append(PlanNode(
-                mode="race",
-                engine_names=["agent", "browser-use"],
-                timeout=180,
-            ))
-            plan.nodes.append(PlanNode(
-                mode="race",
-                engine_names=["direct"],
-                timeout=90,
-            ))
+            # is_deep 时也只跑 crawl4ai（避免 scrapling 抢跑）
+            if prof.is_deep:
+                plan.nodes.append(PlanNode(
+                    mode="race",
+                    engine_names=["crawl4ai"],
+                    timeout=300,
+                    params={"deep_max_depth": 1, "max_pages": 10},
+                ))
+            else:
+                plan.nodes.append(PlanNode(
+                    mode="race",
+                    engine_names=["agent", "browser-use"],
+                    timeout=180,
+                ))
+                plan.nodes.append(PlanNode(
+                    mode="race",
+                    engine_names=["direct"],
+                    timeout=90,
+                ))
         else:
             # 静态页：最快引擎并行竞争
-            plan.nodes.append(PlanNode(
-                mode="race",
-                engine_names=["scrapling", "crawl4ai"],
-                timeout=90,
-            ))
-            plan.nodes.append(PlanNode(
-                mode="race",
-                engine_names=["direct"],
-                timeout=60,
-            ))
+            # is_deep 时只跑 crawl4ai（避免 scrapling 抢跑）
+            if prof.is_deep:
+                plan.nodes.append(PlanNode(
+                    mode="race",
+                    engine_names=["crawl4ai"],
+                    timeout=300,
+                    params={"deep_max_depth": 1, "max_pages": 10},
+                ))
+            else:
+                plan.nodes.append(PlanNode(
+                    mode="race",
+                    engine_names=["scrapling", "crawl4ai"],
+                    timeout=90,
+                ))
+                plan.nodes.append(PlanNode(
+                    mode="race",
+                    engine_names=["direct"],
+                    timeout=60,
+                ))
 
         return plan
 
