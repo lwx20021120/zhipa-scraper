@@ -771,8 +771,12 @@ class UnifiedEngine:
                      f"📋 场景画像：{prof.scenario}（置信度 {prof.confidence}）"
                      + (f"；原因：{'、'.join(prof.reasons)}" if prof.reasons else ""))
 
-        # 2. 生成执行计划
+        # 2. 生成执行计划 + 注入 UI 传入的 kwargs（深爬参数等）
         plan = self.planner.build(prof)
+        for node in plan.nodes:
+            for k, v in kwargs.items():
+                if k not in node.params:
+                    node.params[k] = v
         self._report(progress,
                      f"🗺️ 执行计划：{' → '.join(n.mode + '(' + '+'.join(n.engine_names) + ')' for n in plan.nodes)}")
 

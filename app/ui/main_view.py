@@ -580,10 +580,24 @@ class MainView:
     def _render_cell(self, field_name: str, value: str):
         """单元格渲染：URL/链接→可点击超链接；图片→可点击缩略图；文本自动换行。
 
-        - 链接字段（链接/url/网址/href）或值以 http 开头 → 可点击链接
-        - 图片字段（图片/封面/缩略图/img/cover）或值以 http+图片后缀 → 缩略图
-        - 普通文本 → 自动换行
+        整个函数 try/except 兜底（避免 flet 子组件在异常数据下
+        让整列都"渲染错误"）——失败时显示原值文本。
         """
+        try:
+            return self._render_cell_inner(field_name, value)
+        except Exception as e:
+            # 兜底：原值文本（不显示"(渲染错误)"——那样会让用户以为程序崩了）
+            v = str(value) if value is not None else "-"
+            return ft.Container(
+                content=ft.Text(v[:50], size=11,
+                                color=ft.Colors.GREY_600,
+                                overflow=ft.TextOverflow.ELLIPSIS),
+                padding=4, width=160,
+                tooltip=f"渲染降级（{type(e).__name__}）：{v[:200]}",
+            )
+
+    def _render_cell_inner(self, field_name: str, value: str):
+        """_render_cell 的实际实现（抽出来便于 try/except 兜底）。"""
         if not value:
             return ft.Container(content=ft.Text("-", size=12), width=80)
         v = str(value).strip()
@@ -593,7 +607,7 @@ class MainView:
                                                 "img", "image", "cover",
                                                 "海报", "src"))
         is_url_field = any(k in fname for k in ("链接", "url", "网址",
-                                                "href", "address"))
+                                                "href", "address", "link"))
         looks_img = lower.startswith(("http://", "https://")) and any(
             lower.endswith(ext) for ext in (".jpg", ".jpeg", ".png", ".gif",
                                             ".webp", ".bmp", ".svg"))
@@ -625,7 +639,20 @@ class MainView:
                     padding=4, width=120,
                 )
         # URL/链接字段（或值像链接）→ 可点击超链接
-        if is_url_field or looks_url:
+        if is_url_field or looks_url or lower.startswith(("/", "../")):
+            # 路径是相对路径（无 http 头）→ 渲染为"路径:..."文本（不是可点击 Link，
+            # 因为 flet 的 ft.Link 在 web 模式下需要完整 URL）
+            if lower.startswith(("/", "../")) and not lower.startswith(
+                    ("http://", "https://")):
+                display = ("/" + v.lstrip("/").lstrip("./").lstrip("/")
+                          if v.startswith("/") else v)[:50]
+                return ft.Container(
+                    content=ft.Text(display, size=11,
+                                    color=ft.Colors.GREY_600,
+                                    overflow=ft.TextOverflow.ELLIPSIS),
+                    padding=4, width=160,
+                    tooltip=f"相对路径（需后端绝对化）：{v}",
+                )
             display = v if len(v) <= 50 else v[:50] + "…"
             return ft.Container(
                 content=ft.Link(
