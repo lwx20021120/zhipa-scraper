@@ -1,5 +1,120 @@
 [
   {
+    "time": "09-01 14:50",
+    "ai_input": "",
+    "url": "http://x.com",
+    "fetcher": "static",
+    "fields": [
+      {
+        "name": "标题",
+        "selector": "h3"
+      }
+    ],
+    "rows_count": 0,
+    "used_fetcher": "static"
+  },
+  {
+    "time": "09-01 14:49",
+    "ai_input": "爬取这个网站前十页的小说的小说名，作者名称，小说链接，并进去该小说标签页爬取封面和最新章节的标题",
+    "url": "https://www.biquga.com/",
+    "fetcher": "auto",
+    "fields": [],
+    "pagination": {
+      "mode": "deep",
+      "max_pages": 10
+    },
+    "rows_count": 365,
+    "used_fetcher": "crawl4ai"
+  },
+  {
+    "time": "09-01 14:41",
+    "ai_input": "爬取这个网站前十页的小说的小说名，作者名称，小说链接，并进去该小说标签页爬取封面和最新章节的标题",
+    "url": "https://www.biquga.com/",
+    "fetcher": "auto",
+    "fields": [],
+    "pagination": {
+      "mode": "deep",
+      "max_pages": 10
+    },
+    "rows_count": 363,
+    "used_fetcher": "crawl4ai"
+  },
+  {
+    "time": "09-01 14:41",
+    "ai_input": "爬取这个网站前十页的小说的小说名，作者名称，小说链接，并进去该小说标签页爬取封面和最新章节的标题",
+    "url": "https://www.biquga.com/",
+    "fetcher": "auto",
+    "fields": [],
+    "pagination": {
+      "mode": "deep",
+      "max_pages": 10
+    },
+    "rows_count": 19,
+    "used_fetcher": "crawl4ai"
+  },
+  {
+    "time": "09-01 14:37",
+    "ai_input": "爬取这个网站的所有分类页面，提取书籍标题和价格",
+    "url": "https://books.toscrape.com/",
+    "fetcher": "auto",
+    "fields": [],
+    "pagination": {
+      "mode": "deep",
+      "max_pages": 2
+    },
+    "rows_count": 487,
+    "used_fetcher": "crawl4ai"
+  },
+  {
+    "time": "09-01 14:36",
+    "ai_input": "提取页面上所有书籍的标题、价格和链接",
+    "url": "https://books.toscrape.com/",
+    "fetcher": "auto",
+    "fields": [],
+    "rows_count": 137,
+    "used_fetcher": "crawl4ai"
+  },
+  {
+    "time": "09-01 14:30",
+    "ai_input": "",
+    "url": "http://x.com",
+    "fetcher": "static",
+    "fields": [
+      {
+        "name": "标题",
+        "selector": "h3"
+      }
+    ],
+    "rows_count": 0,
+    "used_fetcher": "static"
+  },
+  {
+    "time": "09-01 14:23",
+    "ai_input": "爬取这个网站前十页的小说的小说名，作者名称，小说链接，并进去该小说标签页爬取封面和最新章节的标题",
+    "url": "https://www.biquga.com/",
+    "fetcher": "auto",
+    "fields": [],
+    "pagination": {
+      "mode": "deep",
+      "max_pages": 10
+    },
+    "rows_count": 58,
+    "used_fetcher": "直提"
+  },
+  {
+    "time": "09-01 14:16",
+    "ai_input": "爬取这个网站前十页的小说的小说名，作者名称，小说链接，并进去该小说标签页爬取封面和最新章节的标题",
+    "url": "https://www.biquga.com/",
+    "fetcher": "auto",
+    "fields": [],
+    "pagination": {
+      "mode": "deep",
+      "max_pages": 10
+    },
+    "rows_count": 553,
+    "used_fetcher": "crawl4ai"
+  },
+  {
     "time": "09-01 14:14",
     "ai_input": "",
     "url": "http://x.com",
@@ -246,109 +361,5 @@
     "fields": [],
     "rows_count": 20,
     "used_fetcher": "crawl4ai"
-  },
-  {
-    "time": "09-01 12:04",
-    "ai_input": "爬取豆瓣电影榜单前50个电影名称图片评分",
-    "url": "https://movie.douban.com/",
-    "fetcher": "auto",
-    "fields": [],
-    "rows_count": 1,
-    "used_fetcher": "crawl4ai"
-  },
-  {
-    "time": "09-01 12:03",
-    "ai_input": "爬取豆瓣电影前50个电影名称图片评分",
-    "url": "https://movie.douban.com/",
-    "fetcher": "auto",
-    "fields": [],
-    "rows_count": 1,
-    "used_fetcher": "crawl4ai"
-  },
-  {
-    "time": "09-01 11:45",
-    "ai_input": "爬取这个网站的所有分类页面，提取书籍标题和价格",
-    "url": "https://books.toscrape.com/",
-    "fetcher": "auto",
-    "fields": [],
-    "pagination": {
-      "mode": "deep",
-      "max_pages": 2
-    },
-    "rows_count": 486,
-    "used_fetcher": "crawl4ai"
-  },
-  {
-    "time": "09-01 11:44",
-    "ai_input": "提取页面上所有书籍的标题、价格和链接",
-    "url": "https://books.toscrape.com/",
-    "fetcher": "auto",
-    "fields": [],
-    "rows_count": 20,
-    "used_fetcher": "crawl4ai"
-  },
-  {
-    "time": "09-01 11:44",
-    "ai_input": "爬取这个网站的所有分类页面，提取书籍标题和价格",
-    "url": "https://books.toscrape.com/",
-    "fetcher": "auto",
-    "fields": [],
-    "pagination": {
-      "mode": "deep",
-      "max_pages": 2
-    },
-    "rows_count": 486,
-    "used_fetcher": "crawl4ai"
-  },
-  {
-    "time": "09-01 11:43",
-    "ai_input": "提取页面上所有书籍的标题、价格和链接",
-    "url": "https://books.toscrape.com/",
-    "fetcher": "auto",
-    "fields": [],
-    "rows_count": 20,
-    "used_fetcher": "crawl4ai"
-  },
-  {
-    "time": "09-01 11:42",
-    "ai_input": "",
-    "url": "http://x.com",
-    "fetcher": "static",
-    "fields": [
-      {
-        "name": "标题",
-        "selector": "h3"
-      }
-    ],
-    "rows_count": 0,
-    "used_fetcher": "static"
-  },
-  {
-    "time": "09-01 11:42",
-    "ai_input": "",
-    "url": "http://x.com",
-    "fetcher": "static",
-    "fields": [
-      {
-        "name": "标题",
-        "selector": "h3"
-      }
-    ],
-    "rows_count": 0,
-    "used_fetcher": "static"
-  },
-  {
-    "time": "09-01 11:37",
-    "ai_input": "",
-    "url": "http://x.com",
-    "fetcher": "static",
-    "fields": [
-      {
-        "name": "标题",
-        "selector": "h3"
-      }
-    ],
-    "rows_count": 0,
-    "used_fetcher": "static"
   }
 ]
